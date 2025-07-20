@@ -7,6 +7,10 @@ import {
   scrapNyaa,
   type TorrentResult,
 } from "server";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
+import { Separator } from "~/components/ui/separator";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -16,34 +20,55 @@ function Home() {
   const [notifications, setNotifications] = useState<AiringNotification[]>([]);
 
   return (
-    <main className="p-8 flex flex-col gap-16">
-      <button
-        type="button"
-        onClick={() => {
-          getNotificationList({
-            data: { accessToken: localStorage.getItem("anilist_token") ?? "" },
-          }).then((data) => {
-            setNotifications(data.data.Page.notifications);
-          });
-        }}
-      >
-        Get Anilist User
-      </button>
-
-      <a href="https://anilist.co/api/v2/oauth/authorize?client_id=28653&response_type=token">
-        Login with AniList
-      </a>
-
-      <section>
-        <div className="flex flex-col gap-4 mx-auto max-w-2xl">
-          {notifications.map((notification) => (
-            <AnilistNotificationCard
-              key={notification.id}
-              notification={notification}
-            />
-          ))}
+    <main className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Kawaii Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent mb-4">
+            ✨ Kawaii Anime Tracker ✨
+          </h1>
+          <p className="text-lg text-gray-600 font-medium">
+            (´｡• ᵕ •｡`) ♡ Find your favorite anime episodes! ♡
+          </p>
         </div>
-      </section>
+
+        <div className="flex flex-col gap-8 items-center">
+          <Button
+            className="bg-gradient-to-r from-pink-400 to-purple-400 hover:from-pink-500 hover:to-purple-500 text-white font-semibold px-8 py-3 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+            onClick={() => {
+              getNotificationList({
+                data: {
+                  accessToken: localStorage.getItem("anilist_token") ?? "",
+                },
+              }).then((data) => {
+                setNotifications(data.data.Page.notifications);
+              });
+            }}
+          >
+            🌸 Get My Anime List 🌸
+          </Button>
+
+          <Button
+            asChild
+            className="bg-gradient-to-r from-blue-400 to-cyan-400 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold px-8 py-3 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          >
+            <a href="https://anilist.co/api/v2/oauth/authorize?client_id=28653&response_type=token">
+              💖 Login with AniList 💖
+            </a>
+          </Button>
+        </div>
+
+        <section className="mt-12">
+          <div className="flex flex-col gap-6 mx-auto max-w-3xl">
+            {notifications.map((notification) => (
+              <AnilistNotificationCard
+                key={notification.id}
+                notification={notification}
+              />
+            ))}
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
@@ -64,134 +89,159 @@ function AnilistNotificationCard({
   });
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700">
-      <div className="flex gap-4">
-        <div className="flex-shrink-0">
-          <img
-            src={notification.media.coverImage.medium}
-            alt={
-              notification.media.title.english ||
-              notification.media.title.romaji ||
-              "Anime"
-            }
-            className="w-16 h-20 object-cover rounded"
-          />
-        </div>
-        <div className="flex-1 relative">
-          <span className="absolute top-0 right-0 text-xs text-gray-500 dark:text-gray-400">
-            {new Date(notification.createdAt * 1000).toLocaleString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-          <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">
-            {notification.media.title.english ||
-              notification.media.title.romaji}
-          </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-            Episode {notification.episode} aired
-          </p>
+    <Card className="bg-white/80 backdrop-blur-sm border-2 border-pink-200 rounded-3xl shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-300 overflow-hidden">
+      <CardContent className="p-6">
+        <div className="flex gap-6">
+          <div className="flex-shrink-0 relative">
+            <div className="absolute -top-2 -left-2 text-2xl">✨</div>
+            <img
+              src={notification.media.coverImage.medium}
+              alt={
+                notification.media.title.english ||
+                notification.media.title.romaji ||
+                "Anime"
+              }
+              className="w-20 h-24 object-cover rounded-2xl shadow-lg border-2 border-pink-200"
+            />
+            <div className="absolute -bottom-2 -right-2 text-2xl">🌸</div>
+          </div>
+          <div className="flex-1 relative">
+            <div className="absolute top-0 right-0 bg-gradient-to-r from-pink-100 to-purple-100 px-3 py-1 rounded-full text-xs text-gray-600 font-medium">
+              {new Date(notification.createdAt * 1000).toLocaleString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </div>
+            <h3 className="font-bold text-xl text-gray-800 mb-2 pr-24">
+              {notification.media.title.english ||
+                notification.media.title.romaji}
+            </h3>
+            <div className="bg-gradient-to-r from-purple-100 to-pink-100 px-4 py-2 rounded-full inline-block mb-4">
+              <p className="text-sm font-semibold text-purple-700">
+                🎬 Episode {notification.episode} aired! ✨
+              </p>
+            </div>
 
-          <div className="flex gap-2 mt-4">
-            <button
-              onClick={() => {
-                getLinkMutation.mutate({
-                  data: {
-                    romajiName: notification.media.title.romaji ?? "",
-                    englishName: notification.media.title.english ?? "",
-                    episode: notification.episode,
-                  },
-                });
-              }}
-              disabled={getLinkMutation.isPending}
-              type="button"
-              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {getLinkMutation.isPending ? "Searching..." : "Get Torrents"}
-            </button>
-
-            {torrents.length > 0 && (
-              <button
-                onClick={() => setShowTorrents(!showTorrents)}
-                type="button"
-                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+            <div className="flex gap-3 mt-6">
+              <Button
+                onClick={() => {
+                  getLinkMutation.mutate({
+                    data: {
+                      romajiName: notification.media.title.romaji ?? "",
+                      englishName: notification.media.title.english ?? "",
+                      episode: notification.episode,
+                    },
+                  });
+                }}
+                disabled={getLinkMutation.isPending}
+                className="bg-gradient-to-r from-purple-400 to-pink-400 hover:from-purple-500 hover:to-pink-500 text-white font-semibold px-6 py-2 rounded-full shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
               >
-                {showTorrents ? "Hide" : "Show"} Torrents ({torrents.length})
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+                {getLinkMutation.isPending
+                  ? "🔍 Searching..."
+                  : "🔎 Find Torrents"}
+              </Button>
 
-      {/* Toggleable Torrent Results */}
-      {showTorrents && torrents.length > 0 && (
-        <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-          <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
-            Available Torrents:
-          </h4>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {torrents.map((torrent) => (
-              <TorrentItem
-                key={`${torrent.name}-${torrent.date.getTime()}`}
-                torrent={torrent}
-              />
-            ))}
+              {torrents.length > 0 && (
+                <Button
+                  onClick={() => setShowTorrents(!showTorrents)}
+                  variant="secondary"
+                  className="bg-gradient-to-r from-blue-100 to-cyan-100 hover:from-blue-200 hover:to-cyan-200 text-blue-700 font-semibold px-6 py-2 rounded-full shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border-2 border-blue-200"
+                >
+                  {showTorrents ? "🙈 Hide" : "👀 Show"} Torrents (
+                  {torrents.length}) ✨
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      )}
-    </div>
+
+        {/* Toggleable Torrent Results */}
+        {showTorrents && torrents.length > 0 && (
+          <>
+            <Separator className="my-6 bg-gradient-to-r from-pink-200 via-purple-200 to-blue-200 h-0.5" />
+            <div>
+              <h4 className="font-bold text-lg text-gray-800 mb-4 flex items-center gap-2">
+                <span>🌈</span> Available Torrents <span>🌈</span>
+              </h4>
+
+              <div className="space-y-3 pr-4">
+                {torrents.map((torrent) => (
+                  <TorrentItem
+                    key={`${torrent.name}-${torrent.date.getTime()}`}
+                    torrent={torrent}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
 function TorrentItem({ torrent }: { torrent: TorrentResult }) {
   return (
-    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <h5
-            title={torrent.name}
-            className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate"
-          >
-            {torrent.name}
-          </h5>
-          <div className="flex flex-wrap gap-2 mt-1">
-            <span className="inline-block bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded">
-              {torrent.seeders} seeders
-            </span>
-            {torrent.resolution && (
-              <span className="inline-block bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs px-2 py-1 rounded">
-                {torrent.resolution}
-              </span>
-            )}
-            {torrent.episode && (
-              <span className="inline-block bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs px-2 py-1 rounded">
-                EP {torrent.episode}
-              </span>
-            )}
-            <span className="inline-block bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-xs px-2 py-1 rounded">
-              {torrent.date.toLocaleDateString()}
-            </span>
+    <Card className="bg-gradient-to-r from-pink-50 to-purple-50 border-2 border-pink-100 rounded-2xl hover:shadow-lg transition-all duration-200 hover:scale-[1.01]">
+      <CardContent className="p-4">
+        <div className="flex items-start gap-4">
+          <div className="flex-1 min-w-0 max-w-[calc(100%-140px)]">
+            <h5
+              title={torrent.name}
+              className="font-semibold text-sm text-gray-800 truncate mb-2"
+            >
+              {torrent.name}
+            </h5>
+            <div className="flex flex-wrap gap-2">
+              <Badge
+                variant="secondary"
+                className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 font-semibold border-green-200 rounded-full px-3 py-1"
+              >
+                🌱 {torrent.seeders} seeders
+              </Badge>
+              {torrent.resolution && (
+                <Badge
+                  variant="outline"
+                  className="bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 font-semibold border-blue-200 rounded-full px-3 py-1"
+                >
+                  📺 {torrent.resolution}
+                </Badge>
+              )}
+              {torrent.episode && (
+                <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 font-semibold border-purple-200 rounded-full px-3 py-1">
+                  🎬 EP {torrent.episode}
+                </Badge>
+              )}
+              <Badge
+                variant="secondary"
+                className="bg-gradient-to-r from-orange-100 to-yellow-100 text-orange-700 font-semibold border-orange-200 rounded-full px-3 py-1"
+              >
+                📅 {torrent.date.toLocaleDateString()}
+              </Badge>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 items-end flex-shrink-0 w-[120px]">
+            <Button
+              asChild
+              size="sm"
+              className="bg-gradient-to-r from-green-400 to-emerald-400 hover:from-green-500 hover:to-emerald-500 text-white font-semibold px-4 py-2 rounded-full shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 w-full"
+            >
+              <a href={torrent.magnetLink}>💾 Download</a>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigator.clipboard.writeText(torrent.magnetLink)}
+              className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-full shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border-2 border-gray-200 w-full"
+            >
+              📋 Copy
+            </Button>
           </div>
         </div>
-        <div className="flex flex-col gap-2 items-end">
-          <a
-            href={torrent.magnetLink}
-            className="flex-shrink-0 px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-          >
-            Download
-          </a>
-          <button
-            type="button"
-            className="flex-shrink-0 px-3 py-1 bg-gray-300 dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-xs rounded hover:bg-gray-400 dark:hover:bg-gray-700 transition-colors"
-            onClick={() => navigator.clipboard.writeText(torrent.magnetLink)}
-          >
-            Copy
-          </button>
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
