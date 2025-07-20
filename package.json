@@ -9,7 +9,7 @@
 		"dev:ts": "tsc -b -w",
 		"dev:convex": "npx convex dev",
 		"build": "vite build && tsc --noEmit",
-		"start": "vite start",
+		"start": "node .output/server/index.mjs",
 		"format": "prettier --write ."
 	},
 	"dependencies": {
