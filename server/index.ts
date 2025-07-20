@@ -84,15 +84,16 @@ export const getNotificationList = createServerFn({ method: "GET" })
   });
 
 function extractEpisodeNumber(name: string): number | undefined {
-  // Various episode patterns to match
+  // Various episode patterns to match - ordered from most specific to least specific
+  // IMPORTANT: Order matters! More specific patterns should come first to avoid
+  // false matches (e.g., "Season 2" matching before "- 03")
   const patterns = [
     /S\d+E(\d+)/i, // S01E01, S1E1
+    /\s-\s(\d+)(?:\s|$|\[)/i, // - 03 (followed by space, end, or bracket)
     /EP(\d+)/i, // EP03, ep3
     /episode\s*(\d+)/i, // episode 03, Episode 3
     /\bE(\d+)\b/i, // E01, e1 (standalone)
-    /\s(\d+)\s/, // standalone numbers (be careful with this)
-    /\s-\s(\d+)\s/, // - 01 -
-    /\[(\d+)\]/, // [01], [1]
+    /\[(\d+)\]/, // [01], [1] - for bracketed episodes
   ];
 
   for (const pattern of patterns) {
@@ -180,8 +181,8 @@ export const scrapNyaa = createServerFn({ method: "GET" })
 
     const url = `https://nyaa.si/?${params.toString()}`;
 
+    console.log({ url, episode });
     try {
-      console.log(url);
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -217,7 +218,7 @@ export const scrapNyaa = createServerFn({ method: "GET" })
         }
 
         // Extract episode number and resolution from the name
-        const episode = name ? extractEpisodeNumber(name) : undefined;
+        const animeEpisode = name ? extractEpisodeNumber(name) : undefined;
         const resolution = name ? extractResolution(name) : undefined;
 
         // Push the extracted data as an object into our array
@@ -226,12 +227,14 @@ export const scrapNyaa = createServerFn({ method: "GET" })
           date: parsedDate,
           seeders,
           magnetLink: torrentLink ?? "",
-          episode,
+          episode: animeEpisode,
           resolution,
         });
       });
 
-      return results.filter((result) => result.episode === episode);
+      console.log(results);
+
+      return results.filter((result) => result.episode === episode).slice(0, 5);
     } catch (error) {
       console.error("Error scraping Nyaa:", error);
       return [];

@@ -151,7 +151,10 @@ function TorrentItem({ torrent }: { torrent: TorrentResult }) {
     <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <h5 className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+          <h5
+            title={torrent.name}
+            className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate"
+          >
             {torrent.name}
           </h5>
           <div className="flex flex-wrap gap-2 mt-1">
