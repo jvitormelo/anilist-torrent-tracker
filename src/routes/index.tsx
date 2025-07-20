@@ -14,6 +14,7 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const [notifications, setNotifications] = useState<AiringNotification[]>([]);
+
   return (
     <main className="p-8 flex flex-col gap-16">
       <button
@@ -132,7 +133,7 @@ function AnilistNotificationCard({
             Available Torrents:
           </h4>
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {torrents.map((torrent, index) => (
+            {torrents.map((torrent) => (
               <TorrentItem
                 key={`${torrent.name}-${torrent.date.getTime()}`}
                 torrent={torrent}
