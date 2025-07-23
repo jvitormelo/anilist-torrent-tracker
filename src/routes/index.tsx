@@ -23,6 +23,8 @@ export const Route = createFileRoute("/")({
 function Home() {
   const [activeTab, setActiveTab] = useState("watching");
   const [showOnlyAvailable, setShowOnlyAvailable] = useState(true);
+  const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
+  const [viewMode, setViewMode] = useState<"grouped" | "list">("grouped");
 
   // Check authentication using useQuery
   const {
@@ -113,6 +115,52 @@ function Home() {
         // If neither has next airing date, maintain original order
         return 0;
       }) || [];
+
+  // Group anime by day of the week
+  const groupedByDay = filteredMediaList.reduce(
+    (groups, entry) => {
+      const nextAiring = entry.media.nextAiringEpisode;
+      if (!nextAiring) {
+        // If no next airing info, put in "Unknown" group
+        if (!groups.unknown) groups.unknown = [];
+        groups.unknown.push(entry);
+        return groups;
+      }
+
+      const airingDate = new Date(nextAiring.airingAt * 1000);
+      const dayName = airingDate.toLocaleDateString("en-US", {
+        weekday: "long",
+      });
+
+      if (!groups[dayName]) groups[dayName] = [];
+      groups[dayName].push(entry);
+      return groups;
+    },
+    {} as Record<string, MediaListEntry[]>
+  );
+
+  // Define day colors and order
+  const dayColors = {
+    Monday: "from-blue-100 to-cyan-100 border-blue-200",
+    Tuesday: "from-purple-100 to-pink-100 border-purple-200",
+    Wednesday: "from-green-100 to-emerald-100 border-green-200",
+    Thursday: "from-orange-100 to-yellow-100 border-orange-200",
+    Friday: "from-red-100 to-pink-100 border-red-200",
+    Saturday: "from-indigo-100 to-purple-100 border-indigo-200",
+    Sunday: "from-pink-100 to-rose-100 border-pink-200",
+    unknown: "from-gray-100 to-slate-100 border-gray-200",
+  };
+
+  const dayOrder = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+    "unknown",
+  ];
 
   if (isCheckingAuth) {
     return (
@@ -293,8 +341,8 @@ function Home() {
                     {mediaListData.length} series)
                   </p>
 
-                  {/* Filter Toggle */}
-                  <div className="flex items-center justify-center gap-3 bg-white/60 backdrop-blur-sm rounded-2xl p-4 border-2 border-purple-100">
+                  {/* Filter and View Controls */}
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-4 bg-white/60 backdrop-blur-sm rounded-2xl p-4 border-2 border-purple-100">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -306,6 +354,23 @@ function Home() {
                         🎯 Show only available episodes
                       </span>
                     </label>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-700">
+                        📊 View:
+                      </span>
+                      <select
+                        value={viewMode}
+                        onChange={(e) =>
+                          setViewMode(e.target.value as "grouped" | "list")
+                        }
+                        className="text-sm bg-white border-2 border-purple-200 rounded-lg px-3 py-1 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                      >
+                        <option value="grouped">📅 Grouped by Day</option>
+                        <option value="list">📋 Simple List</option>
+                      </select>
+                    </div>
+
                     {!showOnlyAvailable && (
                       <span className="text-xs text-gray-500 bg-yellow-100 px-2 py-1 rounded-full">
                         Showing all episodes
@@ -315,9 +380,78 @@ function Home() {
                 </div>
 
                 {filteredMediaList.length > 0 ? (
-                  filteredMediaList.map((entry) => (
-                    <MediaListCard key={entry.id} entry={entry} />
-                  ))
+                  viewMode === "grouped" ? (
+                    <div className="space-y-8">
+                      {dayOrder
+                        .filter(
+                          (day) =>
+                            groupedByDay[day] && groupedByDay[day].length > 0
+                        )
+                        .map((day) => (
+                          <div key={day} className="space-y-4">
+                            {/* Day Header */}
+                            <button
+                              type="button"
+                              className={`w-full bg-gradient-to-r ${dayColors[day as keyof typeof dayColors]} rounded-2xl p-4 border-2 shadow-lg cursor-pointer hover:shadow-xl transition-all duration-200 text-left`}
+                              onClick={() =>
+                                setExpandedDays((prev) => ({
+                                  ...prev,
+                                  [day]: !prev[day],
+                                }))
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setExpandedDays((prev) => ({
+                                    ...prev,
+                                    [day]: !prev[day],
+                                  }));
+                                }
+                              }}
+                              aria-expanded={expandedDays[day]}
+                              aria-controls={`day-content-${day}`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-lg transition-transform duration-200 hover:scale-110">
+                                    {expandedDays[day] ? "📂" : "📁"}
+                                  </span>
+                                  <h3 className="text-xl font-bold text-gray-800">
+                                    {day === "unknown"
+                                      ? "📺 No Airing Info"
+                                      : `📅 ${day}`}
+                                  </h3>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-sm font-medium text-gray-600 bg-white/60 px-3 py-1 rounded-full">
+                                    {groupedByDay[day].length} anime
+                                    {groupedByDay[day].length !== 1 ? "s" : ""}
+                                  </span>
+                                  <span className="text-lg transition-transform duration-200">
+                                    {expandedDays[day] ? "🔽" : "▶️"}
+                                  </span>
+                                </div>
+                              </div>
+                            </button>
+
+                            {/* Anime Cards for this day */}
+                            {expandedDays[day] && (
+                              <div className="space-y-4 ml-4 animate-in slide-in-from-top-2 duration-300">
+                                {groupedByDay[day].map((entry) => (
+                                  <MediaListCard key={entry.id} entry={entry} />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {filteredMediaList.map((entry) => (
+                        <MediaListCard key={entry.id} entry={entry} />
+                      ))}
+                    </div>
+                  )
                 ) : (
                   <div className="text-center py-12">
                     <div className="text-4xl mb-4">⏰</div>
