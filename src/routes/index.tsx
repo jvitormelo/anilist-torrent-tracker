@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { Github } from "lucide-react";
 import { useState } from "react";
 import {
   type AiringNotification,
@@ -189,10 +190,15 @@ function Home() {
           <div className="mb-12">
             <div className="text-8xl mb-6">🌸✨🌸</div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent mb-4">
-              ✨ Kawaii Anime Tracker ✨
+              🌸 AniList Torrent Tracker ✨
             </h1>
-            <p className="text-lg text-gray-600 font-medium mb-8">
-              (´｡• ᵕ •｡`) ♡ Find your favorite anime episodes! ♡
+            <p className="text-lg text-gray-600 font-medium mb-4">
+              (´｡• ᵕ •｡`) ♡ Your ultimate anime companion! ♡
+            </p>
+            <p className="text-sm text-gray-500 max-w-2xl mx-auto mb-8">
+              Connect with AniList to track your anime progress, get real-time
+              notifications, and find torrents for new episodes instantly. Never
+              miss your favorite shows again! 🎬📺
             </p>
           </div>
 
@@ -269,10 +275,22 @@ function Home() {
       <div className="max-w-4xl mx-auto">
         {/* Kawaii Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent mb-4">
-            ✨ Kawaii Anime Tracker ✨
-          </h1>
-          <p className="text-lg text-gray-600 font-medium">
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
+              🌸 AniList Torrent Tracker ✨
+            </h1>
+            <a
+              href="https://github.com/jvitormelo/anilist-torrent-tracker"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-600 hover:text-gray-800 hover:scale-110 transition-all duration-200"
+              title="View on GitHub"
+              aria-label="View project on GitHub"
+            >
+              <Github className="w-8 h-8" />
+            </a>
+          </div>
+          <p className="text-lg text-gray-600 font-medium mb-2">
             (´｡• ᵕ •｡`) ♡ Welcome back, {user?.name}! ♡
           </p>
         </div>
@@ -707,7 +725,6 @@ function AnilistNotificationCard({
               }
               className="w-20 h-24 object-cover rounded-2xl shadow-lg border-2 border-pink-200"
             />
-            <div className="absolute -bottom-2 -right-2 text-2xl">🌸</div>
           </div>
           <div className="flex-1 relative">
             <div className="absolute top-0 right-0 bg-gradient-to-r from-pink-100 to-purple-100 px-3 py-1 rounded-full text-xs text-gray-600 font-medium">
@@ -728,16 +745,15 @@ function AnilistNotificationCard({
                 🎬 Episode {notification.episode} aired! ✨
               </p>
             </div>
-
-            <TorrentSection
-              searchParams={{
-                romajiName: notification.media.title.romaji ?? "",
-                englishName: notification.media.title.english ?? "",
-                episode: notification.episode,
-              }}
-            />
           </div>
         </div>
+        <TorrentSection
+          searchParams={{
+            romajiName: notification.media.title.romaji ?? "",
+            englishName: notification.media.title.english ?? "",
+            episode: notification.episode,
+          }}
+        />
       </CardContent>
     </Card>
   );
