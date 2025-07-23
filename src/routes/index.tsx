@@ -1,9 +1,12 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   type AiringNotification,
+  getCurrentlyWatching,
+  getCurrentUser,
   getNotificationList,
+  type MediaListEntry,
   scrapNyaa,
   type TorrentResult,
 } from "server";
@@ -11,77 +14,351 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 export const Route = createFileRoute("/")({
   component: Home,
 });
 
 function Home() {
-  const [notifications, setNotifications] = useState<AiringNotification[]>([]);
+  const [activeTab, setActiveTab] = useState("watching");
+  const [showOnlyAvailable, setShowOnlyAvailable] = useState(true);
+
+  // Check authentication using useQuery
+  const {
+    data: user,
+    isLoading: isCheckingAuth,
+    error: authError,
+  } = useQuery({
+    queryKey: ["user"],
+    queryFn: async () => {
+      const accessToken = localStorage.getItem("anilist_token");
+      if (!accessToken) {
+        throw new Error("No access token");
+      }
+      const response = await getCurrentUser({ data: { accessToken } });
+      return response.data.Viewer;
+    },
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Fetch notifications
+  const { data: notificationsData, isLoading: isLoadingNotifications } =
+    useQuery({
+      queryKey: ["notifications"],
+      queryFn: async () => {
+        const accessToken = localStorage.getItem("anilist_token") ?? "";
+        const response = await getNotificationList({ data: { accessToken } });
+        return response.data.Page.notifications;
+      },
+      enabled: !!user && activeTab === "notifications",
+      staleTime: 2 * 60 * 1000, // 2 minutes
+    });
+
+  // Fetch media list
+  const { data: mediaListData, isLoading: isLoadingMediaList } = useQuery({
+    queryKey: ["mediaList"],
+    queryFn: async () => {
+      const accessToken = localStorage.getItem("anilist_token") ?? "";
+      const userResponse = await getCurrentUser({ data: { accessToken } });
+      const userId = userResponse.data.Viewer.id;
+
+      const mediaResponse = await getCurrentlyWatching({
+        data: {
+          accessToken,
+          userId,
+          perPage: 25,
+        },
+      });
+
+      return mediaResponse.data.Page.mediaList;
+    },
+    enabled: !!user && activeTab === "watching",
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+
+  // Filter and sort media list based on availability and next airing date
+  const filteredMediaList =
+    mediaListData
+      ?.filter((entry) => {
+        if (!showOnlyAvailable) return true;
+
+        const nextEpisode = entry.media.nextAiringEpisode;
+        if (!nextEpisode) return true; // Show if no next episode info
+
+        // Check if the episode the user needs (current progress + 1) is available
+        // The nextAiringEpisode is the episode that will air next, not necessarily the one user needs
+        const userNeedsEpisode = entry.progress + 1;
+        const nextAiringEpisodeNumber = nextEpisode.episode;
+
+        // If the episode user needs is before or equal to the next airing episode, it's available
+        // (because episodes are sequential, so if next airing is EP5, then EP4 is already available)
+        return userNeedsEpisode < nextAiringEpisodeNumber;
+      })
+      .sort((a, b) => {
+        // Sort by next airing date (earliest first)
+        const aNextAiring = a.media.nextAiringEpisode?.airingAt || 0;
+        const bNextAiring = b.media.nextAiringEpisode?.airingAt || 0;
+
+        // If both have next airing dates, sort by earliest
+        if (aNextAiring && bNextAiring) {
+          return aNextAiring - bNextAiring;
+        }
+
+        // If only one has next airing date, prioritize the one with date
+        if (aNextAiring && !bNextAiring) return -1;
+        if (!aNextAiring && bNextAiring) return 1;
+
+        // If neither has next airing date, maintain original order
+        return 0;
+      }) || [];
+
+  if (isCheckingAuth) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🌸</div>
+          <p className="text-lg text-gray-600 font-medium">
+            Checking authentication... ✨
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!user || authError) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-8 flex items-center justify-center">
+        <div className="max-w-md mx-auto text-center">
+          {/* Kawaii Header */}
+          <div className="mb-12">
+            <div className="text-8xl mb-6">🌸✨🌸</div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent mb-4">
+              ✨ Kawaii Anime Tracker ✨
+            </h1>
+            <p className="text-lg text-gray-600 font-medium mb-8">
+              (´｡• ᵕ •｡`) ♡ Find your favorite anime episodes! ♡
+            </p>
+          </div>
+
+          {/* Beautiful Sign In Card */}
+          <Card className="bg-white/90 backdrop-blur-sm border-2 border-pink-200 rounded-3xl shadow-2xl overflow-hidden">
+            <CardContent className="p-8">
+              <div className="text-center mb-6">
+                <div className="text-4xl mb-4">🎀</div>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
+                  Welcome Back! ♡
+                </h2>
+                <p className="text-gray-600">
+                  Sign in with AniList to track your anime and find torrents!
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-gradient-to-r from-pink-100 to-purple-100 p-4 rounded-2xl">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-2xl">🔔</span>
+                    <span className="font-semibold text-purple-700">
+                      Notifications
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Get notified when new episodes air
+                  </p>
+                </div>
+
+                <div className="bg-gradient-to-r from-blue-100 to-cyan-100 p-4 rounded-2xl">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-2xl">📺</span>
+                    <span className="font-semibold text-blue-700">
+                      Watch Progress
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Track your currently watching anime
+                  </p>
+                </div>
+
+                <div className="bg-gradient-to-r from-green-100 to-emerald-100 p-4 rounded-2xl">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-2xl">🔍</span>
+                    <span className="font-semibold text-green-700">
+                      Find Torrents
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Instantly search for anime torrents
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                asChild
+                className="w-full mt-8 bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 hover:from-pink-500 hover:via-purple-500 hover:to-blue-500 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:shadow-xl transform  transition-all duration-300 text-lg"
+              >
+                <a
+                  href={`https://anilist.co/api/v2/oauth/authorize?client_id=${import.meta.env.VITE_ANILIST_CLIENT_ID}&response_type=token`}
+                >
+                  💖 Sign in with AniList 💖
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-8">
       <div className="max-w-4xl mx-auto">
         {/* Kawaii Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent mb-4">
             ✨ Kawaii Anime Tracker ✨
           </h1>
           <p className="text-lg text-gray-600 font-medium">
-            (´｡• ᵕ •｡`) ♡ Find your favorite anime episodes! ♡
+            (´｡• ᵕ •｡`) ♡ Welcome back, {user?.name}! ♡
           </p>
         </div>
 
-        <div className="flex flex-col gap-8 items-center">
-          <Button
-            className="bg-gradient-to-r from-pink-400 to-purple-400 hover:from-pink-500 hover:to-purple-500 text-white font-semibold px-8 py-3 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-            onClick={() => {
-              getNotificationList({
-                data: {
-                  accessToken: localStorage.getItem("anilist_token") ?? "",
-                },
-              }).then((data) => {
-                setNotifications(data.data.Page.notifications);
-              });
-            }}
-          >
-            🌸 Get My Anime List 🌸
-          </Button>
-
-          <Button
-            asChild
-            className="bg-gradient-to-r from-blue-400 to-cyan-400 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold px-8 py-3 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-          >
-            <a
-              href={`https://anilist.co/api/v2/oauth/authorize?client_id=${import.meta.env.VITE_ANILIST_CLIENT_ID}&response_type=token`}
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-8 bg-white/80 backdrop-blur-sm ">
+            <TabsTrigger
+              value="watching"
+              className="rounded-xl data-[state=active]:!bg-gradient-to-r data-[state=active]:!from-purple-400 data-[state=active]:!to-blue-400 data-[state=active]:!text-white data-[state=active]:!shadow-md data-[state=active]:!border-transparent font-semibold transition-all duration-200 hover:bg-purple-50"
             >
-              💖 Login with AniList 💖
-            </a>
-          </Button>
-        </div>
+              📺 Currently Watching
+            </TabsTrigger>
+            <TabsTrigger
+              value="notifications"
+              className="rounded-xl data-[state=active]:!bg-gradient-to-r data-[state=active]:!from-pink-400 data-[state=active]:!to-purple-400 data-[state=active]:!text-white data-[state=active]:!shadow-md data-[state=active]:!border-transparent font-semibold transition-all duration-200 hover:bg-pink-50"
+            >
+              🔔 Notifications
+            </TabsTrigger>
+          </TabsList>
 
-        <section className="mt-12">
-          <div className="flex flex-col gap-6 mx-auto max-w-4xl">
-            {notifications.map((notification) => (
-              <AnilistNotificationCard
-                key={notification.id}
-                notification={notification}
-              />
-            ))}
-          </div>
-        </section>
+          <TabsContent value="notifications" className="space-y-6">
+            {isLoadingNotifications ? (
+              <div className="text-center py-12">
+                <div className="text-4xl mb-4">🌸</div>
+                <p className="text-lg text-gray-600">
+                  Loading notifications... ✨
+                </p>
+              </div>
+            ) : notificationsData && notificationsData.length > 0 ? (
+              <>
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent mb-2">
+                    🔔 Recent Notifications 🔔
+                  </h2>
+                  <p className="text-gray-600">
+                    Episodes that recently aired ♡ ({notificationsData.length}{" "}
+                    notifications)
+                  </p>
+                </div>
+                {notificationsData.map((notification) => (
+                  <AnilistNotificationCard
+                    key={notification.id}
+                    notification={notification}
+                  />
+                ))}
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-4xl mb-4">😴</div>
+                <p className="text-lg text-gray-600">No recent notifications</p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="watching" className="space-y-6">
+            {isLoadingMediaList ? (
+              <div className="text-center py-12">
+                <div className="text-4xl mb-4">📺</div>
+                <p className="text-lg text-gray-600">
+                  Loading your anime list... ✨
+                </p>
+              </div>
+            ) : mediaListData && mediaListData.length > 0 ? (
+              <>
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent mb-2">
+                    📺 Currently Watching 📺
+                  </h2>
+                  <p className="text-gray-600 mb-4">
+                    Your ongoing anime series ♡ ({filteredMediaList.length} of{" "}
+                    {mediaListData.length} series)
+                  </p>
+
+                  {/* Filter Toggle */}
+                  <div className="flex items-center justify-center gap-3 bg-white/60 backdrop-blur-sm rounded-2xl p-4 border-2 border-purple-100">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showOnlyAvailable}
+                        onChange={(e) => setShowOnlyAvailable(e.target.checked)}
+                        className="w-4 h-4 text-purple-600 bg-gray-100 border-purple-300 rounded focus:ring-purple-500 focus:ring-2"
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        🎯 Show only available episodes
+                      </span>
+                    </label>
+                    {!showOnlyAvailable && (
+                      <span className="text-xs text-gray-500 bg-yellow-100 px-2 py-1 rounded-full">
+                        Showing all episodes
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {filteredMediaList.length > 0 ? (
+                  filteredMediaList.map((entry) => (
+                    <MediaListCard key={entry.id} entry={entry} />
+                  ))
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="text-4xl mb-4">⏰</div>
+                    <p className="text-lg text-gray-600">
+                      No episodes available right now!
+                      {!showOnlyAvailable && " Try enabling the filter above."}
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-4xl mb-4">📚</div>
+                <p className="text-lg text-gray-600">
+                  No anime in your watching list
+                </p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </main>
   );
 }
 
-function AnilistNotificationCard({
-  notification,
-}: {
-  notification: AiringNotification;
-}) {
+interface TorrentSectionProps {
+  searchParams: {
+    romajiName: string;
+    englishName?: string;
+    episode: number;
+  };
+  buttonText?: string;
+}
+
+function TorrentSection({
+  searchParams,
+  buttonText = "🔎 Find Torrents",
+}: TorrentSectionProps) {
   const [showTorrents, setShowTorrents] = useState(false);
   const [torrents, setTorrents] = useState<TorrentResult[]>([]);
+
   const getLinkMutation = useMutation({
     mutationFn: scrapNyaa,
     onSuccess: (data) => {
@@ -91,7 +368,193 @@ function AnilistNotificationCard({
   });
 
   return (
-    <Card className="bg-white/80 backdrop-blur-sm border-2 border-pink-200 rounded-3xl shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-300 overflow-hidden">
+    <>
+      <div className="flex gap-3 mt-6">
+        <Button
+          onClick={() => {
+            getLinkMutation.mutate({
+              data: searchParams,
+            });
+          }}
+          disabled={getLinkMutation.isPending}
+          className="bg-gradient-to-r from-purple-400 to-pink-400 hover:from-purple-500 hover:to-pink-500 text-white font-semibold px-6 py-2 rounded-full shadow-md hover:shadow-lg transform transition-all duration-200"
+        >
+          {getLinkMutation.isPending ? "🔍 Searching..." : buttonText}
+        </Button>
+
+        {torrents.length > 0 && (
+          <Button
+            onClick={() => setShowTorrents(!showTorrents)}
+            variant="secondary"
+            className="bg-gradient-to-r from-blue-100 to-cyan-100 hover:from-blue-200 hover:to-cyan-200 text-blue-700 font-semibold px-6 py-2 rounded-full shadow-md hover:shadow-lg transform transition-all duration-200 border-2 border-blue-200"
+          >
+            {showTorrents ? "🙈 Hide" : "👀 Show"} Torrents ({torrents.length})
+            ✨
+          </Button>
+        )}
+      </div>
+
+      {/* Toggleable Torrent Results */}
+      {showTorrents && torrents.length > 0 && (
+        <>
+          <Separator className="my-6 bg-gradient-to-r from-purple-200 via-pink-200 to-blue-200 h-0.5" />
+          <div>
+            <h4 className="font-bold text-lg text-gray-800 mb-4 flex items-center gap-2">
+              <span>🌈</span> Available Torrents <span>🌈</span>
+            </h4>
+
+            <div className="space-y-3 pr-4">
+              {torrents.map((torrent) => (
+                <TorrentItem
+                  key={`${torrent.name}-${torrent.date.getTime()}`}
+                  torrent={torrent}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function MediaListCard({ entry }: { entry: MediaListEntry }) {
+  const nextEpisode = entry.progress + 1;
+  const progressPercentage = entry.media.episodes
+    ? (entry.progress / entry.media.episodes) * 100
+    : 0;
+
+  // Calculate time remaining for next episode
+  const getTimeRemaining = () => {
+    const nextAiring = entry.media.nextAiringEpisode;
+    if (!nextAiring) return null;
+
+    const now = Date.now() / 1000; // Convert to seconds
+    const timeUntilAiring = nextAiring.timeUntilAiring;
+
+    if (timeUntilAiring <= 0) return "Available now!";
+
+    const days = Math.floor(timeUntilAiring / (24 * 60 * 60));
+    const hours = Math.floor((timeUntilAiring % (24 * 60 * 60)) / (60 * 60));
+    const minutes = Math.floor((timeUntilAiring % (60 * 60)) / 60);
+
+    if (days > 0) {
+      return `${days}d ${hours}h`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  };
+
+  const timeRemaining = getTimeRemaining();
+
+  // Check if the episode the user needs is available
+  const userNeedsEpisode = entry.progress + 1;
+  const nextAiringEpisode = entry.media.nextAiringEpisode;
+  const isEpisodeAvailable = nextAiringEpisode
+    ? userNeedsEpisode < nextAiringEpisode.episode
+    : true;
+
+  return (
+    <Card className="bg-white/80 backdrop-blur-sm border-2 border-purple-200 rounded-3xl shadow-xl hover:shadow-2xl transform  transition-all duration-300 overflow-hidden">
+      <CardContent className="p-6">
+        <div className="flex gap-6">
+          <div className="flex-shrink-0 relative">
+            <div className="absolute -top-2 -left-2 text-2xl">✨</div>
+            <img
+              src={entry.media.coverImage.large}
+              alt={entry.media.title.userPreferred}
+              className="w-20 h-24 object-cover rounded-2xl shadow-lg border-2 border-purple-200"
+            />
+          </div>
+          <div className="flex-1 relative">
+            <div className="absolute top-0 right-0 bg-gradient-to-r from-purple-100 to-pink-100 px-3 py-1 rounded-full text-xs text-gray-600 font-medium">
+              {entry.status}
+            </div>
+
+            <h3 className="font-bold text-xl text-gray-800 mb-2 pr-24">
+              {entry.media.title.userPreferred}
+            </h3>
+
+            <div className="flex flex-wrap gap-2 mb-4">
+              <div className="bg-gradient-to-r from-blue-100 to-cyan-100 px-3 py-1 rounded-full">
+                <p className="text-sm font-semibold text-blue-700">
+                  📺 Episode {entry.progress}
+                  {entry.media.episodes ? `/${entry.media.episodes}` : ""}
+                </p>
+              </div>
+
+              {entry.media.nextAiringEpisode && (
+                <div
+                  className={`px-3 py-1 rounded-full ${
+                    isEpisodeAvailable
+                      ? "bg-gradient-to-r from-green-100 to-emerald-100"
+                      : "bg-gradient-to-r from-orange-100 to-yellow-100"
+                  }`}
+                >
+                  <p
+                    className={`text-sm font-semibold ${
+                      isEpisodeAvailable ? "text-green-700" : "text-orange-700"
+                    }`}
+                  >
+                    ⏰ Next: EP {entry.media.nextAiringEpisode.episode}
+                    {timeRemaining && (
+                      <span className="ml-1">
+                        {isEpisodeAvailable
+                          ? " (Available!)"
+                          : ` (${timeRemaining})`}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
+
+              {entry.score > 0 && (
+                <div className="bg-gradient-to-r from-yellow-100 to-orange-100 px-3 py-1 rounded-full">
+                  <p className="text-sm font-semibold text-orange-700">
+                    ⭐ {entry.score}/10
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Progress Bar */}
+            {entry.media.episodes && (
+              <div className="mb-4">
+                <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-purple-400 to-pink-400 h-full transition-all duration-300 rounded-full"
+                    style={{ width: `${progressPercentage}%` }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {progressPercentage.toFixed(1)}% complete
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <TorrentSection
+          searchParams={{
+            romajiName: entry.media.title.userPreferred,
+            episode: nextEpisode,
+          }}
+          buttonText={`🔎 Find EP ${nextEpisode}`}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function AnilistNotificationCard({
+  notification,
+}: {
+  notification: AiringNotification;
+}) {
+  return (
+    <Card className="bg-white/80 backdrop-blur-sm border-2 border-pink-200 rounded-3xl shadow-xl hover:shadow-2xl transform  transition-all duration-300 overflow-hidden">
       <CardContent className="p-6">
         <div className="flex gap-6">
           <div className="flex-shrink-0 relative">
@@ -127,59 +590,15 @@ function AnilistNotificationCard({
               </p>
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <Button
-                onClick={() => {
-                  getLinkMutation.mutate({
-                    data: {
-                      romajiName: notification.media.title.romaji ?? "",
-                      englishName: notification.media.title.english ?? "",
-                      episode: notification.episode,
-                    },
-                  });
-                }}
-                disabled={getLinkMutation.isPending}
-                className="bg-gradient-to-r from-purple-400 to-pink-400 hover:from-purple-500 hover:to-pink-500 text-white font-semibold px-6 py-2 rounded-full shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
-              >
-                {getLinkMutation.isPending
-                  ? "🔍 Searching..."
-                  : "🔎 Find Torrents"}
-              </Button>
-
-              {torrents.length > 0 && (
-                <Button
-                  onClick={() => setShowTorrents(!showTorrents)}
-                  variant="secondary"
-                  className="bg-gradient-to-r from-blue-100 to-cyan-100 hover:from-blue-200 hover:to-cyan-200 text-blue-700 font-semibold px-6 py-2 rounded-full shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border-2 border-blue-200"
-                >
-                  {showTorrents ? "🙈 Hide" : "👀 Show"} Torrents (
-                  {torrents.length}) ✨
-                </Button>
-              )}
-            </div>
+            <TorrentSection
+              searchParams={{
+                romajiName: notification.media.title.romaji ?? "",
+                englishName: notification.media.title.english ?? "",
+                episode: notification.episode,
+              }}
+            />
           </div>
         </div>
-
-        {/* Toggleable Torrent Results */}
-        {showTorrents && torrents.length > 0 && (
-          <>
-            <Separator className="my-6 bg-gradient-to-r from-pink-200 via-purple-200 to-blue-200 h-0.5" />
-            <div>
-              <h4 className="font-bold text-lg text-gray-800 mb-4 flex items-center gap-2">
-                <span>🌈</span> Available Torrents <span>🌈</span>
-              </h4>
-
-              <div className="space-y-3 pr-4">
-                {torrents.map((torrent) => (
-                  <TorrentItem
-                    key={`${torrent.name}-${torrent.date.getTime()}`}
-                    torrent={torrent}
-                  />
-                ))}
-              </div>
-            </div>
-          </>
-        )}
       </CardContent>
     </Card>
   );
@@ -187,7 +606,7 @@ function AnilistNotificationCard({
 
 function TorrentItem({ torrent }: { torrent: TorrentResult }) {
   return (
-    <Card className="bg-gradient-to-r from-pink-50 to-purple-50 border-2 border-pink-100 rounded-2xl hover:shadow-lg transition-all duration-200 hover:scale-[1.01]">
+    <Card className="bg-gradient-to-r from-pink-50 to-purple-50 border-2 border-pink-100 rounded-2xl hover:shadow-lg transition-all duration-200 ">
       <CardContent className="p-4">
         <div className="flex flex-col sm:flex-row items-start gap-4">
           <div className="flex-1 min-w-0 w-full sm:max-w-[calc(100%-140px)]">
@@ -229,7 +648,7 @@ function TorrentItem({ torrent }: { torrent: TorrentResult }) {
             <Button
               asChild
               size="sm"
-              className="bg-gradient-to-r from-green-400 to-emerald-400 hover:from-green-500 hover:to-emerald-500 text-white font-semibold px-4 py-2 rounded-full shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 w-full"
+              className="bg-gradient-to-r from-green-400 to-emerald-400 hover:from-green-500 hover:to-emerald-500 text-white font-semibold px-4 py-2 rounded-full shadow-md hover:shadow-lg transformtransition-all duration-200 w-full"
             >
               <a href={torrent.magnetLink}>💾 Download</a>
             </Button>
