@@ -1,10 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getHeader } from "@tanstack/react-start/server";
 import * as cheerio from "cheerio";
 import { z } from "zod";
 
-const anilistSchema = z.object({
-  accessToken: z.string(),
-});
+function getAccessToken() {
+  const bearerToken = getHeader("Authorization");
+  if (!bearerToken) {
+    throw new Error("Authorization header is required");
+  }
+  return bearerToken.replace("Bearer ", "");
+}
 
 export interface AiringNotification {
   animeId: number;
@@ -38,10 +43,9 @@ interface AnilistResponse {
   errors?: { message: string }[];
 }
 
-export const getNotificationList = createServerFn({ method: "GET" })
-  .validator(anilistSchema)
-  .handler(async (ctx): Promise<AnilistResponse> => {
-    const accessToken = ctx.data?.accessToken;
+export const getNotificationList = createServerFn({ method: "GET" }).handler(
+  async (ctx): Promise<AnilistResponse> => {
+    const accessToken = getAccessToken();
     const response = await fetch("https://graphql.anilist.co", {
       method: "POST",
       body: JSON.stringify({
@@ -81,7 +85,8 @@ export const getNotificationList = createServerFn({ method: "GET" })
     });
     const data: AnilistResponse = await response.json();
     return data;
-  });
+  }
+);
 
 function extractEpisodeNumber(name: string): number | undefined {
   // Various episode patterns to match - ordered from most specific to least specific
@@ -255,10 +260,9 @@ interface UserResponse {
   errors?: { message: string }[];
 }
 
-export const getCurrentUser = createServerFn({ method: "GET" })
-  .validator(anilistSchema)
-  .handler(async (ctx): Promise<UserResponse> => {
-    const { accessToken } = ctx.data;
+export const getCurrentUser = createServerFn({ method: "GET" }).handler(
+  async (ctx): Promise<UserResponse> => {
+    const accessToken = getAccessToken();
 
     const response = await fetch("https://graphql.anilist.co", {
       method: "POST",
@@ -284,7 +288,8 @@ export const getCurrentUser = createServerFn({ method: "GET" })
 
     const data: UserResponse = await response.json();
     return data;
-  });
+  }
+);
 
 export interface MediaListEntry {
   id: number;

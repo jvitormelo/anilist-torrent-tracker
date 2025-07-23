@@ -46,7 +46,11 @@ function Home() {
       if (!accessToken) {
         throw new Error("No access token");
       }
-      const response = await getCurrentUser({ data: { accessToken } });
+      const response = await getCurrentUser({
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
       return response.data.Viewer;
     },
     retry: false,
@@ -59,7 +63,10 @@ function Home() {
       queryKey: ["notifications"],
       queryFn: async () => {
         const accessToken = localStorage.getItem("anilist_token") ?? "";
-        const response = await getNotificationList({ data: { accessToken } });
+
+        const response = await getNotificationList({
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
         return response.data.Page.notifications;
       },
       enabled: !!user && activeTab === "notifications",
@@ -71,20 +78,18 @@ function Home() {
     queryKey: ["mediaList"],
     queryFn: async () => {
       const accessToken = localStorage.getItem("anilist_token") ?? "";
-      const userResponse = await getCurrentUser({ data: { accessToken } });
-      const userId = userResponse.data.Viewer.id;
 
       const mediaResponse = await getCurrentlyWatching({
         data: {
           accessToken,
-          userId,
+          userId: user?.id ?? 0,
           perPage: 25,
         },
       });
 
       return mediaResponse.data.Page.mediaList;
     },
-    enabled: !!user && activeTab === "watching",
+    enabled: !!user?.id && activeTab === "watching",
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
