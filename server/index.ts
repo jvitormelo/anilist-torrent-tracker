@@ -44,7 +44,7 @@ interface AnilistResponse {
 }
 
 export const getNotificationList = createServerFn({ method: "GET" }).handler(
-  async (ctx): Promise<AnilistResponse> => {
+  async (): Promise<AnilistResponse> => {
     const accessToken = getAccessToken();
     const response = await fetch("https://graphql.anilist.co", {
       method: "POST",
@@ -141,7 +141,7 @@ function parseNyaaDate(dateString: string): Date | null {
   try {
     // Nyaa dates are typically in format "2025-07-06 14:49"
     const date = new Date(dateString);
-    return isNaN(date.getTime()) ? null : date;
+    return Number.isNaN(date.getTime()) ? null : date;
   } catch {
     return null;
   }
@@ -261,7 +261,7 @@ interface UserResponse {
 }
 
 export const getCurrentUser = createServerFn({ method: "GET" }).handler(
-  async (ctx): Promise<UserResponse> => {
+  async (): Promise<UserResponse> => {
     const accessToken = getAccessToken();
 
     const response = await fetch("https://graphql.anilist.co", {
