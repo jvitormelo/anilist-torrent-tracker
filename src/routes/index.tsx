@@ -11,6 +11,7 @@ import {
   scrapNyaa,
   type TorrentResult,
 } from "server";
+import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -810,7 +811,13 @@ function TorrentItem({ torrent }: { torrent: TorrentResult }) {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => navigator.clipboard.writeText(torrent.magnetLink)}
+              onClick={() => {
+                navigator.clipboard.writeText(torrent.magnetLink);
+                toast.success("Magnet link copied to clipboard! 📋", {
+                  description: "You can now paste it in your torrent client",
+                  duration: 3000,
+                });
+              }}
               className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-full shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border-2 border-gray-200 w-full"
             >
               📋 Copy
