@@ -563,7 +563,6 @@ function MediaListCard({ entry }: { entry: MediaListEntry }) {
     const nextAiring = entry.media.nextAiringEpisode;
     if (!nextAiring) return null;
 
-    const now = Date.now() / 1000; // Convert to seconds
     const timeUntilAiring = nextAiring.timeUntilAiring;
 
     if (timeUntilAiring <= 0) return "Available now!";
