@@ -47,9 +47,7 @@ function Home() {
         throw new Error("No access token");
       }
       const response = await getCurrentUser({
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: getHeaders(),
       });
       return response.data.Viewer;
     },
@@ -62,11 +60,7 @@ function Home() {
     useQuery({
       queryKey: ["notifications"],
       queryFn: async () => {
-        const accessToken = localStorage.getItem("anilist_token") ?? "";
-
-        const response = await getNotificationList({
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
+        const response = await getNotificationList({ headers: getHeaders() });
         return response.data.Page.notifications;
       },
       enabled: !!user && activeTab === "notifications",
@@ -77,14 +71,12 @@ function Home() {
   const { data: mediaListData, isLoading: isLoadingMediaList } = useQuery({
     queryKey: ["mediaList"],
     queryFn: async () => {
-      const accessToken = localStorage.getItem("anilist_token") ?? "";
-
       const mediaResponse = await getCurrentlyWatching({
         data: {
-          accessToken,
           userId: user?.id ?? 0,
           perPage: 25,
         },
+        headers: getHeaders(),
       });
 
       return mediaResponse.data.Page.mediaList;
@@ -419,7 +411,6 @@ function Home() {
                         )
                         .map((day) => (
                           <div key={day} className="space-y-4">
-                            {/* Day Header */}
                             <button
                               type="button"
                               className={`w-full bg-gradient-to-r ${dayColors[day as keyof typeof dayColors]} rounded-2xl p-4 border-2 shadow-lg cursor-pointer hover:shadow-xl transition-all duration-200 text-left`}
@@ -505,6 +496,13 @@ function Home() {
       </div>
     </main>
   );
+}
+
+function getHeaders() {
+  const accessToken = localStorage.getItem("anilist_token") ?? "";
+  return {
+    Authorization: `Bearer ${accessToken}`,
+  };
 }
 
 interface TorrentSectionProps {

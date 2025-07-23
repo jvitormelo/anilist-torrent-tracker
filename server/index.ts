@@ -332,13 +332,13 @@ interface MediaListResponse {
 export const getCurrentlyWatching = createServerFn({ method: "GET" })
   .validator(
     z.object({
-      accessToken: z.string(),
       userId: z.number(),
       perPage: z.number().optional().default(50),
     })
   )
   .handler(async (ctx): Promise<MediaListResponse> => {
-    const { accessToken, userId, perPage } = ctx.data;
+    const { userId, perPage } = ctx.data;
+    const accessToken = getAccessToken();
 
     const response = await fetch("https://graphql.anilist.co", {
       method: "POST",
