@@ -23,8 +23,14 @@ export const Route = createFileRoute("/")({
 function Home() {
   const [activeTab, setActiveTab] = useState("watching");
   const [showOnlyAvailable, setShowOnlyAvailable] = useState(true);
-  const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
-  const [viewMode, setViewMode] = useState<"grouped" | "list">("grouped");
+  const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>(
+    () => {
+      // Get current day name
+      const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
+      return { [today]: true };
+    }
+  );
+  const [viewMode, setViewMode] = useState<"grouped" | "list">("list");
 
   // Check authentication using useQuery
   const {
