@@ -4,7 +4,6 @@ Only vibe coding is allowed.
 
 ## TODO
 
-- [ ] Remove Convex
 - [ ] Add tRPC
 
 ---
