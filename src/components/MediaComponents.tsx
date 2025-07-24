@@ -178,6 +178,7 @@ export function AnilistNotificationCard({ notification }: AnilistNotificationCar
                                 minute: "2-digit",
                             })}
                         </div>
+
                         <a
                             href={`https://anilist.co/anime/${notification.animeId}`}
                             target="_blank"
@@ -190,10 +191,13 @@ export function AnilistNotificationCard({ notification }: AnilistNotificationCar
                                 <span className="ml-2 text-pink-500 group-hover:animate-bounce inline-block">🔗✨</span>
                             </h3>
                         </a>
-                        <div className="bg-gradient-to-r from-purple-100 to-pink-100 px-4 py-2 rounded-full inline-block mb-4">
-                            <p className="text-sm font-semibold text-purple-700">
-                                🎬 Episode {notification.episode} aired! ✨
-                            </p>
+
+                        <div className="flex flex-wrap gap-2 mb-4">
+                            <div className="bg-gradient-to-r from-purple-100 to-pink-100 px-3 py-1 rounded-full">
+                                <p className="text-sm font-semibold text-purple-700">
+                                    🎬 Episode {notification.episode} aired! ✨
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
