@@ -83,9 +83,9 @@ export const setLastActive = mutation({
 		name: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const user = await ctx.db.query("onlineUsers").filter((q) => q.eq(q.field("anilistId"), args.anilistId)).first();	
+		const user = await ctx.db.query("users").filter((q) => q.eq(q.field("anilistId"), args.anilistId)).first();	
 		if (!user) {
-			await ctx.db.insert("onlineUsers", { anilistId: args.anilistId, lastActive: Date.now(), name: args.name });
+			await ctx.db.insert("users", { anilistId: args.anilistId, lastActive: Date.now(), name: args.name });
 		} else {
 			await ctx.db.patch(user._id, { lastActive: Date.now() });
 		}
@@ -97,7 +97,7 @@ export const countOnlineUsers = query({
 	handler: async (ctx) => {
 		const fiveMinutesAgo = Date.now() - 5 * 60 * 1000; // 5 minutes in milliseconds
 		const onlineUsers = await ctx.db
-			.query("onlineUsers")
+			.query("users")
 			.filter((q) => q.gte(q.field("lastActive"), fiveMinutesAgo))
 			.collect();
 		return onlineUsers.length;
@@ -108,7 +108,6 @@ export const countOnlineUsers = query({
 export const sendChatMessage = mutation({
 	args: {
 		anilistId: v.number(),
-		userName: v.string(),
 		message: v.string(),
 	},
 	handler: async (ctx, args) => {
@@ -118,9 +117,14 @@ export const sendChatMessage = mutation({
 			throw new Error("Message must be between 1 and 500 characters");
 		}
 
+		// Get user from users table to ensure they exist
+		const user = await ctx.db.query("users").filter((q) => q.eq(q.field("anilistId"), args.anilistId)).first();
+		if (!user) {
+			throw new Error("User not found");
+		}
+
 		await ctx.db.insert("chatMessages", {
 			anilistId: args.anilistId,
-			userName: args.userName,
 			message: trimmedMessage,
 			timestamp: Date.now(),
 		});
@@ -140,6 +144,17 @@ export const getChatMessages = query({
 			.order("desc")
 			.take(limit);
 		
-		return messages.reverse(); // Return in chronological order (oldest first)
+		// Get user names for each message
+		const messagesWithUsers = await Promise.all(
+			messages.map(async (message) => {
+				const user = await ctx.db.query("users").filter((q) => q.eq(q.field("anilistId"), message.anilistId)).first();
+				return {
+					...message,
+					userName: user?.name || "Unknown User"
+				};
+			})
+		);
+		
+		return messagesWithUsers.reverse(); // Return in chronological order (oldest first)
 	},
 });

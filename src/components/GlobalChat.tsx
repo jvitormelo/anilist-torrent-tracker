@@ -65,7 +65,6 @@ export function GlobalChat({ currentUser }: GlobalChatProps) {
     try {
       await sendMessage({
         anilistId: currentUser.id,
-        userName: currentUser.name,
         message: message.trim(),
       });
       setMessage("");
