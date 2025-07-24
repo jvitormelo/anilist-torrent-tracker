@@ -7,6 +7,7 @@ import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Separator } from "~/components/ui/separator";
 import { MessageCircle, Send, X, Minimize2, Maximize2 } from "lucide-react";
+import { ChatLoading } from "~/components/KawaiiLoading";
 
 interface ChatMessage {
   _id: string;
@@ -156,7 +157,9 @@ export function GlobalChat({ currentUser }: GlobalChatProps) {
                 {/* Messages Area */}
                 <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
                   <div className="space-y-3">
-                    {chatMessages?.map((msg: ChatMessage) => (
+                    {chatMessages === undefined ? (
+                      <ChatLoading />
+                    ) : chatMessages?.map((msg: ChatMessage) => (
                       <div
                         key={msg._id}
                         className={`flex flex-col ${
