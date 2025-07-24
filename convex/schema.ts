@@ -9,9 +9,14 @@ export default defineSchema({
 	numbers: defineTable({
 		value: v.number(),
 	}),
-	onlineUsers: defineTable({
+	users: defineTable({
 		anilistId: v.number(),
 		name: v.string(),
 		lastActive: v.number(),
-	})
+	}).index("by_anilistId", ["anilistId"]),
+	chatMessages: defineTable({
+		anilistId: v.number(),
+		message: v.string(),
+		timestamp: v.number(),
+	}).index("by_timestamp", ["timestamp"]),
 });

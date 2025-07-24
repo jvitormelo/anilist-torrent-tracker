@@ -19,6 +19,8 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useMutation as convexUseMutation, useQuery as convexUseQuery } from "convex/react";
+import { GlobalChat } from "~/components/GlobalChat";
+import { FullPageLoading, AnimeLoading, SearchLoading } from "~/components/KawaiiLoading";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -200,16 +202,7 @@ function Home() {
   ];
 
   if (isCheckingAuth) {
-    return (
-      <main className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-8 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl mb-4">🌸</div>
-          <p className="text-lg text-gray-600 font-medium">
-            Checking authentication... ✨
-          </p>
-        </div>
-      </main>
-    );
+    return <FullPageLoading message="Checking authentication... ✨" />;
   }
 
   if (!user || authError) {
@@ -370,12 +363,7 @@ function Home() {
 
           <TabsContent value="notifications" className="space-y-6">
             {isLoadingNotifications ? (
-              <div className="text-center py-12">
-                <div className="text-4xl mb-4">🌸</div>
-                <p className="text-lg text-gray-600">
-                  Loading notifications... ✨
-                </p>
-              </div>
+              <AnimeLoading />
             ) : notificationsData && notificationsData.length > 0 ? (
               <>
                 <div className="text-center mb-6">
@@ -404,12 +392,7 @@ function Home() {
 
           <TabsContent value="watching" className="space-y-6">
             {isLoadingMediaList ? (
-              <div className="text-center py-12">
-                <div className="text-4xl mb-4">📺</div>
-                <p className="text-lg text-gray-600">
-                  Loading your anime list... ✨
-                </p>
-              </div>
+              <AnimeLoading />
             ) : mediaListData && mediaListData.length > 0 ? (
               <>
                 <div className="text-center mb-6">
@@ -552,6 +535,9 @@ function Home() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Global Chat Component */}
+      <GlobalChat currentUser={user ? { id: user.id, name: user.name } : undefined} />
     </main>
   );
 }
@@ -599,7 +585,14 @@ function TorrentSection({
           disabled={getLinkMutation.isPending}
           className="bg-gradient-to-r from-purple-400 to-pink-400 hover:from-purple-500 hover:to-pink-500 text-white font-semibold px-6 py-2 rounded-full shadow-md hover:shadow-lg transform transition-all duration-200"
         >
-          {getLinkMutation.isPending ? "🔍 Searching..." : buttonText}
+{getLinkMutation.isPending ? (
+            <div className="flex items-center gap-2">
+              <span className="animate-spin">🔍</span>
+              Searching...
+            </div>
+          ) : (
+            buttonText
+          )}
         </Button>
 
         {torrents.length > 0 && (
