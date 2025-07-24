@@ -82,7 +82,6 @@ function Home() {
   const [viewMode, setViewMode] = useState<"grouped" | "list">("list");
 
   const setLastActive = convexUseMutation(api.myFunctions.setLastActive);
-  const listUsers = convexUseQuery(api.myFunctions.listUsers);
   const onlineUsersCount = convexUseQuery(api.myFunctions.countOnlineUsers);
 
   // Check authentication using useQuery
