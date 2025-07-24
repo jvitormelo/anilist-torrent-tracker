@@ -70,9 +70,17 @@ export function MediaListCard({ entry }: MediaListCardProps) {
                             {entry.status}
                         </div>
 
-                        <h3 className="font-bold text-xl text-gray-800 mb-2 pr-24">
-                            {entry.media.title.userPreferred}
-                        </h3>
+                        <a
+                            href={`https://anilist.co/anime/${entry.media.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group inline-block pr-24 mb-2"
+                        >
+                            <h3 className="font-bold text-xl text-gray-800 hover:text-purple-600 transition-colors duration-200 group-hover:underline decoration-2 decoration-purple-400 underline-offset-2">
+                                {entry.media.title.userPreferred}
+                                <span className="ml-2 text-purple-500 group-hover:animate-bounce inline-block">🔗✨</span>
+                            </h3>
+                        </a>
 
                         <div className="flex flex-wrap gap-2 mb-4">
                             <div className="bg-gradient-to-r from-blue-100 to-cyan-100 px-3 py-1 rounded-full">
@@ -170,10 +178,18 @@ export function AnilistNotificationCard({ notification }: AnilistNotificationCar
                                 minute: "2-digit",
                             })}
                         </div>
-                        <h3 className="font-bold text-xl text-gray-800 mb-2 pr-24">
-                            {notification.media.title.english ||
-                                notification.media.title.romaji}
-                        </h3>
+                        <a
+                            href={`https://anilist.co/anime/${notification.animeId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group inline-block pr-24 mb-2"
+                        >
+                            <h3 className="font-bold text-xl text-gray-800 hover:text-pink-600 transition-colors duration-200 group-hover:underline decoration-2 decoration-pink-400 underline-offset-2">
+                                {notification.media.title.english ||
+                                    notification.media.title.romaji}
+                                <span className="ml-2 text-pink-500 group-hover:animate-bounce inline-block">🔗✨</span>
+                            </h3>
+                        </a>
                         <div className="bg-gradient-to-r from-purple-100 to-pink-100 px-4 py-2 rounded-full inline-block mb-4">
                             <p className="text-sm font-semibold text-purple-700">
                                 🎬 Episode {notification.episode} aired! ✨
