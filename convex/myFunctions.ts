@@ -76,14 +76,6 @@ export const myAction = action({
 	},
 });
 
-// query to list users
-export const listUsers = query({
-	handler: async (ctx) => {
-		const users = await ctx.db.query("onlineUsers").collect();
-		return users;
-	},
-});
-
 // set last active, add user if not exists
 export const setLastActive = mutation({
 	args: {
