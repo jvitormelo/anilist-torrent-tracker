@@ -1,7 +1,8 @@
 import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { api } from "convex/_generated/api";
 import { Github } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   type AiringNotification,
   getCurrentlyWatching,
@@ -17,6 +18,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { useMutation as convexUseMutation, useQuery as convexUseQuery } from "convex/react";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -79,12 +81,32 @@ function Home() {
   );
   const [viewMode, setViewMode] = useState<"grouped" | "list">("list");
 
+  const setLastActive = convexUseMutation(api.myFunctions.setLastActive);
+  const onlineUsersCount = convexUseQuery(api.myFunctions.countOnlineUsers);
+
   // Check authentication using useQuery
   const {
     data: user,
     isLoading: isCheckingAuth,
     error: authError,
   } = useQuery(useQueryOptions);
+
+  useEffect(() => {
+    if (user?.id) {
+      setLastActive({ anilistId: user.id, name: user.name });
+    }
+  }, [user]);
+
+  // Update user activity every minute
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const interval = setInterval(() => {
+      setLastActive({ anilistId: user.id, name: user.name });
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [user?.id, user?.name, setLastActive]);
 
   // Fetch notifications
   const { data: notificationsData, isLoading: isLoadingNotifications } =
@@ -193,6 +215,19 @@ function Home() {
   if (!user || authError) {
     return (
       <main className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-8 flex items-center justify-center">
+        {/* Online Users Counter */}
+        <div className="fixed top-4 right-4 z-50">
+          <div className="bg-white/90 backdrop-blur-sm border-2 border-green-200 rounded-full px-4 py-2 shadow-lg hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-sm font-semibold text-gray-700">
+                {onlineUsersCount !== undefined ? onlineUsersCount : 0} online
+              </span>
+              <span className="text-sm">👥</span>
+            </div>
+          </div>
+        </div>
+
         <div className="max-w-md mx-auto text-center">
           {/* Kawaii Header */}
           <div className="mb-12">
@@ -280,6 +315,19 @@ function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-8">
+      {/* Online Users Counter */}
+      <div className="fixed top-4 right-4 z-50">
+        <div className="bg-white/90 backdrop-blur-sm border-2 border-green-200 rounded-full px-4 py-2 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+            <span className="text-sm font-semibold text-gray-700">
+              {onlineUsersCount !== undefined ? onlineUsersCount : 0} online
+            </span>
+            <span className="text-sm">👥</span>
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-4xl mx-auto">
         {/* Kawaii Header */}
         <div className="text-center mb-8">
