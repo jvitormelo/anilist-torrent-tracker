@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Github } from "lucide-react";
 import { useState } from "react";
@@ -22,6 +22,51 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
+const useQueryOptions = queryOptions({
+  queryKey: ["user"],
+  queryFn: async () => {
+    const accessToken = localStorage.getItem("anilist_token");
+    if (!accessToken) {
+      throw new Error("No access token");
+    }
+    const response = await getCurrentUser({
+      headers: getHeaders(),
+    });
+    return response.data.Viewer;
+  },
+  retry: false,
+  staleTime: 5 * 60 * 1000, // 5 minutes
+});
+
+const useMediaListQueryOptions = (userId: number, activeTab: string) =>
+  queryOptions({
+    queryKey: ["mediaList"],
+    queryFn: async () => {
+      const mediaResponse = await getCurrentlyWatching({
+        data: {
+          userId: userId ?? 0,
+          perPage: 25,
+        },
+        headers: getHeaders(),
+      });
+
+      return mediaResponse.data.Page.mediaList;
+    },
+    enabled: !!userId && activeTab === "watching",
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+
+const useNotificationsQueryOptions = (userId: number, activeTab: string) =>
+  queryOptions({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      const response = await getNotificationList({ headers: getHeaders() });
+      return response.data.Page.notifications;
+    },
+    enabled: !!userId && activeTab === "notifications",
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+
 function Home() {
   const [activeTab, setActiveTab] = useState("watching");
   const [showOnlyAvailable, setShowOnlyAvailable] = useState(true);
@@ -39,51 +84,16 @@ function Home() {
     data: user,
     isLoading: isCheckingAuth,
     error: authError,
-  } = useQuery({
-    queryKey: ["user"],
-    queryFn: async () => {
-      const accessToken = localStorage.getItem("anilist_token");
-      if (!accessToken) {
-        throw new Error("No access token");
-      }
-      const response = await getCurrentUser({
-        headers: getHeaders(),
-      });
-      return response.data.Viewer;
-    },
-    retry: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  } = useQuery(useQueryOptions);
 
   // Fetch notifications
   const { data: notificationsData, isLoading: isLoadingNotifications } =
-    useQuery({
-      queryKey: ["notifications"],
-      queryFn: async () => {
-        const response = await getNotificationList({ headers: getHeaders() });
-        return response.data.Page.notifications;
-      },
-      enabled: !!user && activeTab === "notifications",
-      staleTime: 2 * 60 * 1000, // 2 minutes
-    });
+    useQuery(useNotificationsQueryOptions(user?.id ?? 0, activeTab));
 
   // Fetch media list
-  const { data: mediaListData, isLoading: isLoadingMediaList } = useQuery({
-    queryKey: ["mediaList"],
-    queryFn: async () => {
-      const mediaResponse = await getCurrentlyWatching({
-        data: {
-          userId: user?.id ?? 0,
-          perPage: 25,
-        },
-        headers: getHeaders(),
-      });
-
-      return mediaResponse.data.Page.mediaList;
-    },
-    enabled: !!user?.id && activeTab === "watching",
-    staleTime: 2 * 60 * 1000, // 2 minutes
-  });
+  const { data: mediaListData, isLoading: isLoadingMediaList } = useQuery(
+    useMediaListQueryOptions(user?.id ?? 0, activeTab)
+  );
 
   // Filter and sort media list based on availability and next airing date
   const filteredMediaList =
