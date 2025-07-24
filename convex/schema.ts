@@ -9,4 +9,9 @@ export default defineSchema({
 	numbers: defineTable({
 		value: v.number(),
 	}),
+	onlineUsers: defineTable({
+		anilistId: v.number(),
+		name: v.string(),
+		lastActive: v.number(),
+	})
 });

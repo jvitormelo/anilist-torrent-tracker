@@ -75,3 +75,39 @@ export const myAction = action({
 		});
 	},
 });
+
+// query to list users
+export const listUsers = query({
+	handler: async (ctx) => {
+		const users = await ctx.db.query("onlineUsers").collect();
+		return users;
+	},
+});
+
+// set last active, add user if not exists
+export const setLastActive = mutation({
+	args: {
+		anilistId: v.number(),
+		name: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const user = await ctx.db.query("onlineUsers").filter((q) => q.eq(q.field("anilistId"), args.anilistId)).first();	
+		if (!user) {
+			await ctx.db.insert("onlineUsers", { anilistId: args.anilistId, lastActive: Date.now(), name: args.name });
+		} else {
+			await ctx.db.patch(user._id, { lastActive: Date.now() });
+		}
+	},
+});
+
+// count online users (active in the last 5 minutes)
+export const countOnlineUsers = query({
+	handler: async (ctx) => {
+		const fiveMinutesAgo = Date.now() - 5 * 60 * 1000; // 5 minutes in milliseconds
+		const onlineUsers = await ctx.db
+			.query("onlineUsers")
+			.filter((q) => q.gte(q.field("lastActive"), fiveMinutesAgo))
+			.collect();
+		return onlineUsers.length;
+	},
+});
