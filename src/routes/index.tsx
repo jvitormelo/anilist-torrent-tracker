@@ -1,6 +1,10 @@
 import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
+import {
+  useMutation as convexUseMutation,
+  useQuery as convexUseQuery,
+} from "convex/react";
 import { Github } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -13,14 +17,13 @@ import {
   type TorrentResult,
 } from "server";
 import { toast } from "sonner";
+import { GlobalChat } from "~/components/GlobalChat";
+import { AnimeLoading, FullPageLoading } from "~/components/KawaiiLoading";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { useMutation as convexUseMutation, useQuery as convexUseQuery } from "convex/react";
-import { GlobalChat } from "~/components/GlobalChat";
-import { FullPageLoading, AnimeLoading, SearchLoading } from "~/components/KawaiiLoading";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -537,7 +540,9 @@ function Home() {
       </div>
 
       {/* Global Chat Component */}
-      <GlobalChat currentUser={user ? { id: user.id, name: user.name } : undefined} />
+      <GlobalChat
+        currentUser={user ? { id: user.id, name: user.name } : undefined}
+      />
     </main>
   );
 }
@@ -585,7 +590,7 @@ function TorrentSection({
           disabled={getLinkMutation.isPending}
           className="bg-gradient-to-r from-purple-400 to-pink-400 hover:from-purple-500 hover:to-pink-500 text-white font-semibold px-6 py-2 rounded-full shadow-md hover:shadow-lg transform transition-all duration-200"
         >
-{getLinkMutation.isPending ? (
+          {getLinkMutation.isPending ? (
             <div className="flex items-center gap-2">
               <span className="animate-spin">🔍</span>
               Searching...
