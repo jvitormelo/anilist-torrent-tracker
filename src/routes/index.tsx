@@ -19,6 +19,7 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useMutation as convexUseMutation, useQuery as convexUseQuery } from "convex/react";
+import { GlobalChat } from "~/components/GlobalChat";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -552,6 +553,9 @@ function Home() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Global Chat Component */}
+      <GlobalChat currentUser={user ? { id: user.id, name: user.name } : undefined} />
     </main>
   );
 }

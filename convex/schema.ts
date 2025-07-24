@@ -13,5 +13,11 @@ export default defineSchema({
 		anilistId: v.number(),
 		name: v.string(),
 		lastActive: v.number(),
-	})
+	}),
+	chatMessages: defineTable({
+		anilistId: v.number(),
+		userName: v.string(),
+		message: v.string(),
+		timestamp: v.number(),
+	}).index("by_timestamp", ["timestamp"]),
 });

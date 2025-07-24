@@ -103,3 +103,43 @@ export const countOnlineUsers = query({
 		return onlineUsers.length;
 	},
 });
+
+// send chat message
+export const sendChatMessage = mutation({
+	args: {
+		anilistId: v.number(),
+		userName: v.string(),
+		message: v.string(),
+	},
+	handler: async (ctx, args) => {
+		// Trim and validate message
+		const trimmedMessage = args.message.trim();
+		if (!trimmedMessage || trimmedMessage.length > 500) {
+			throw new Error("Message must be between 1 and 500 characters");
+		}
+
+		await ctx.db.insert("chatMessages", {
+			anilistId: args.anilistId,
+			userName: args.userName,
+			message: trimmedMessage,
+			timestamp: Date.now(),
+		});
+	},
+});
+
+// get recent chat messages
+export const getChatMessages = query({
+	args: {
+		limit: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const limit = args.limit || 50;
+		const messages = await ctx.db
+			.query("chatMessages")
+			.withIndex("by_timestamp")
+			.order("desc")
+			.take(limit);
+		
+		return messages.reverse(); // Return in chronological order (oldest first)
+	},
+});
