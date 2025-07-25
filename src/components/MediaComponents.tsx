@@ -189,6 +189,8 @@ export function MediaListCard({ entry, currentUser }: MediaListCardProps) {
     entry.media.nextAiringEpisode ?? undefined
   );
 
+  console.log(entry.media.title);
+
   return (
     <Card className="bg-white/80 backdrop-blur-sm border-2 border-purple-200 rounded-3xl shadow-xl hover:shadow-2xl transform transition-all duration-300 overflow-hidden">
       <CardContent className="p-6">
@@ -281,7 +283,8 @@ export function MediaListCard({ entry, currentUser }: MediaListCardProps) {
 
         <TorrentSection
           searchParams={{
-            romajiName: entry.media.title.userPreferred,
+            romajiName: entry.media.title.romaji ?? "",
+            englishName: entry.media.title.english ?? "",
             episode: nextEpisode,
           }}
           buttonText={`🔎 Find EP ${nextEpisode}`}

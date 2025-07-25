@@ -115,6 +115,23 @@ function extractEpisodeNumber(name: string): number | undefined {
   return undefined;
 }
 
+function extractSeason(name: string): number | undefined {
+  // Season patterns to match
+  const patterns = [
+    /S(\d+)/i, // S1, S2, S01, S02
+    /Season\s*(\d+)/i, // Season 1, Season 2
+  ];
+
+  for (const pattern of patterns) {
+    const match = name.match(pattern);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+  }
+
+  return undefined;
+}
+
 function extractResolution(name: string): string | undefined {
   // Common resolution patterns
   const patterns = [
@@ -160,26 +177,29 @@ export interface TorrentResult {
   magnetLink: string;
   episode?: number;
   resolution?: string;
+  season?: number;
 }
 
 export const scrapNyaa = createServerFn({ method: "GET" })
   .validator(
     z.object({
       romajiName: z.string(),
-      englishName: z.string().optional(),
+      englishName: z.string(),
       episode: z.number().optional(),
     })
   )
   .handler(async (ctx) => {
     const { romajiName, englishName, episode } = ctx.data;
 
-    // Build search query
+    const sanitizedRomajiName = romajiName.replace(/\s+(Season|S)\s*\d+/gi, "");
+
+    const query = `${sanitizedRomajiName}`;
 
     // Build URL with parameters
     const params = new URLSearchParams({
       f: "0",
       c: "1_2",
-      q: englishName ?? romajiName,
+      q: query,
       s: "seeders",
       o: "desc",
     });
@@ -222,8 +242,9 @@ export const scrapNyaa = createServerFn({ method: "GET" })
           return;
         }
 
-        // Extract episode number and resolution from the name
+        // Extract episode number, season, and resolution from the name
         const animeEpisode = name ? extractEpisodeNumber(name) : undefined;
+        const season = name ? extractSeason(name) : undefined;
         const resolution = name ? extractResolution(name) : undefined;
 
         // Push the extracted data as an object into our array
@@ -233,9 +254,12 @@ export const scrapNyaa = createServerFn({ method: "GET" })
           seeders,
           magnetLink: torrentLink ?? "",
           episode: animeEpisode,
+          season,
           resolution,
         });
       });
+
+      console.log({ results });
 
       return results.filter((result) => result.episode === episode).slice(0, 5);
     } catch (error) {
@@ -306,6 +330,8 @@ export interface MediaListEntry {
     bannerImage: string | null;
     title: {
       userPreferred: string;
+      english: string;
+      romaji: string;
     };
     coverImage: {
       large: string;
@@ -361,6 +387,8 @@ export const getCurrentlyWatching = createServerFn({ method: "GET" })
 									bannerImage
 									title {
 										userPreferred
+                    english
+                    romaji
 									}
 									coverImage {
 										large

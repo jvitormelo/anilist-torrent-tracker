@@ -1,16 +1,16 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { scrapNyaa, type TorrentResult } from "server";
+import { TorrentActions } from "~/components/MediaComponents";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
-import { TorrentActions } from "~/components/MediaComponents";
 
 interface TorrentSectionProps {
   searchParams: {
     romajiName: string;
-    englishName?: string;
+    englishName: string;
     episode: number;
   };
   buttonText?: string;
