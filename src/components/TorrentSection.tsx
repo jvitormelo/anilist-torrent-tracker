@@ -1,13 +1,11 @@
 import { useMutation } from "@tanstack/react-query";
-import { api } from "convex/_generated/api";
-import { useMutation as convexUseMutation } from "convex/react";
 import { useState } from "react";
 import { scrapNyaa, type TorrentResult } from "server";
-import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
+import { TorrentActions } from "~/components/MediaComponents";
 
 interface TorrentSectionProps {
   searchParams: {
@@ -32,50 +30,6 @@ interface TorrentItemProps {
 }
 
 function TorrentItem({ torrent, animeName, currentUser }: TorrentItemProps) {
-  const recordDownload = convexUseMutation(api.myFunctions.recordTorrentDownload);
-
-  const handleDownloadClick = async () => {
-    if (currentUser) {
-      try {
-        await recordDownload({
-          anilistId: currentUser.id,
-          animeName: animeName,
-          episode: torrent.episode || 0,
-          torrentName: torrent.name,
-          magnetLink: torrent.magnetLink,
-          resolution: torrent.resolution,
-          seeders: parseInt(torrent.seeders) || undefined,
-        });
-      } catch (error) {
-        console.error("Failed to record download:", error);
-      }
-    }
-  };
-
-  const handleCopyClick = async () => {
-    navigator.clipboard.writeText(torrent.magnetLink);
-    toast.success("Magnet link copied to clipboard! 📋", {
-      description: "You can now paste it in your torrent client",
-      duration: 3000,
-    });
-
-    // Also record as download since copying usually means downloading
-    if (currentUser) {
-      try {
-        await recordDownload({
-          anilistId: currentUser.id,
-          animeName: animeName,
-          episode: torrent.episode || 0,
-          torrentName: torrent.name,
-          magnetLink: torrent.magnetLink,
-          resolution: torrent.resolution,
-          seeders: parseInt(torrent.seeders) || undefined,
-        });
-      } catch (error) {
-        console.error("Failed to record download:", error);
-      }
-    }
-  };
   return (
     <Card className="bg-gradient-to-r from-pink-50 to-purple-50 border-2 border-pink-100 rounded-2xl hover:shadow-lg transition-all duration-200">
       <CardContent className="p-4">
@@ -115,23 +69,16 @@ function TorrentItem({ torrent, animeName, currentUser }: TorrentItemProps) {
               </Badge>
             </div>
           </div>
-          <div className="flex flex-row sm:flex-col gap-2 items-stretch sm:items-end flex-shrink-0 w-full sm:w-[120px]">
-            <Button
-              asChild
-              size="sm"
-              className="bg-gradient-to-r from-green-400 to-emerald-400 hover:from-green-500 hover:to-emerald-500 text-white font-semibold px-4 py-2 rounded-full shadow-md hover:shadow-lg transform transition-all duration-200 w-full"
-            >
-              <a href={torrent.magnetLink} onClick={handleDownloadClick}>💾 Download</a>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleCopyClick}
-              className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-full shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border-2 border-gray-200 w-full"
-            >
-              📋 Copy
-            </Button>
-          </div>
+          <TorrentActions
+            magnetLink={torrent.magnetLink}
+            animeName={animeName}
+            episode={torrent.episode || 0}
+            torrentName={torrent.name}
+            resolution={torrent.resolution}
+            seeders={parseInt(torrent.seeders) || undefined}
+            currentUser={currentUser}
+            size="sm"
+          />
         </div>
       </CardContent>
     </Card>

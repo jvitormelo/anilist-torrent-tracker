@@ -1,7 +1,11 @@
+import { api } from "convex/_generated/api";
+import { useMutation as convexUseMutation } from "convex/react";
 import type { AiringNotification, MediaListEntry } from "server";
+import { toast } from "sonner";
 import { TorrentSection } from "~/components/TorrentSection";
-import { Card, CardContent } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
 
 interface MediaListCardProps {
   entry: MediaListEntry;
@@ -34,6 +38,20 @@ interface TorrentDownload {
 
 interface TorrentDownloadsCardProps {
   download: TorrentDownload;
+}
+
+interface TorrentActionsProps {
+  magnetLink: string;
+  animeName: string;
+  episode: number;
+  torrentName: string;
+  resolution?: string;
+  seeders?: number;
+  currentUser?: {
+    id: number;
+    name: string;
+  };
+  size?: "sm" | "default";
 }
 
 // Utility functions for media cards
@@ -75,6 +93,87 @@ const checkEpisodeAvailability = (
 
   return userNeedsEpisode < nextAiringEpisodeNumber;
 };
+
+// Reusable component for torrent download and copy actions
+export function TorrentActions({
+  magnetLink,
+  animeName,
+  episode,
+  torrentName,
+  resolution,
+  seeders,
+  currentUser,
+  size = "sm",
+}: TorrentActionsProps) {
+  const recordDownload = convexUseMutation(
+    api.myFunctions.recordTorrentDownload
+  );
+
+  const handleDownloadClick = async () => {
+    if (currentUser) {
+      try {
+        await recordDownload({
+          anilistId: currentUser.id,
+          animeName: animeName,
+          episode: episode,
+          torrentName: torrentName,
+          magnetLink: magnetLink,
+          resolution: resolution,
+          seeders: seeders,
+        });
+      } catch (error) {
+        console.error("Failed to record download:", error);
+      }
+    }
+  };
+
+  const handleCopyClick = async () => {
+    navigator.clipboard.writeText(magnetLink);
+    toast.success("Magnet link copied to clipboard! 📋", {
+      description: "You can now paste it in your torrent client",
+      duration: 3000,
+    });
+
+    // Also record as download since copying usually means downloading
+    if (currentUser) {
+      try {
+        await recordDownload({
+          anilistId: currentUser.id,
+          animeName: animeName,
+          episode: episode,
+          torrentName: torrentName,
+          magnetLink: magnetLink,
+          resolution: resolution,
+          seeders: seeders,
+        });
+      } catch (error) {
+        console.error("Failed to record download:", error);
+      }
+    }
+  };
+
+  return (
+    <div className="flex flex-row sm:flex-col gap-2 items-stretch sm:items-end flex-shrink-0 w-full sm:w-[120px]">
+      <Button
+        asChild
+        size={size}
+        className="bg-gradient-to-r from-green-400 to-emerald-400 hover:from-green-500 hover:to-emerald-500 text-white font-semibold px-4 py-2 rounded-full shadow-md hover:shadow-lg transform transition-all duration-200 w-full"
+      >
+        <a href={magnetLink} onClick={handleDownloadClick}>
+          💾 Download
+        </a>
+      </Button>
+      <Button
+        size={size}
+        variant="outline"
+        onClick={handleCopyClick}
+        className="bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-full shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border-2 border-gray-200 w-full"
+      >
+        📋 Copy
+      </Button>
+    </div>
+  );
+}
 
 export function MediaListCard({ entry, currentUser }: MediaListCardProps) {
   const nextEpisode = entry.progress + 1;
@@ -274,7 +373,9 @@ export function TorrentDownloadsCard({ download }: TorrentDownloadsCardProps) {
             <div className="w-20 h-24 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl shadow-lg border-2 border-green-200 flex items-center justify-center">
               <div className="text-center">
                 <div className="text-2xl mb-1">🎬</div>
-                <div className="text-xs font-bold text-green-700">EP {download.episode}</div>
+                <div className="text-xs font-bold text-green-700">
+                  EP {download.episode}
+                </div>
               </div>
             </div>
           </div>
@@ -288,7 +389,10 @@ export function TorrentDownloadsCard({ download }: TorrentDownloadsCardProps) {
                 {download.animeName}
               </h3>
               <p className="text-sm text-gray-600 font-medium mb-2">
-                Downloaded by <span className="text-green-600 font-semibold">{download.userName}</span>
+                Downloaded by{" "}
+                <span className="text-green-600 font-semibold">
+                  {download.userName}
+                </span>
               </p>
             </div>
 
@@ -313,15 +417,32 @@ export function TorrentDownloadsCard({ download }: TorrentDownloadsCardProps) {
                 📅 {downloadTime.toLocaleDateString()}
               </Badge>
             </div>
-
-            <div className="bg-gray-50 rounded-2xl p-3 border-2 border-gray-100">
-              <p className="text-xs text-gray-600 font-medium mb-2">Torrent Name:</p>
-              <p className="text-sm text-gray-800 truncate" title={download.torrentName}>
-                {download.torrentName}
-              </p>
-            </div>
           </div>
         </div>
+
+        <section>
+          <div className="bg-gray-50 rounded-2xl p-3 border-2 border-gray-100 mb-4">
+            <p className="text-xs text-gray-600 font-medium mb-2">
+              Torrent Name:
+            </p>
+            <p
+              className="text-sm text-gray-800 truncate"
+              title={download.torrentName}
+            >
+              {download.torrentName}
+            </p>
+          </div>
+          <TorrentActions
+            magnetLink={download.magnetLink}
+            animeName={download.animeName}
+            episode={download.episode}
+            torrentName={download.torrentName}
+            resolution={download.resolution}
+            seeders={download.seeders}
+            currentUser={{ id: download.anilistId, name: download.userName }}
+            size="sm"
+          />
+        </section>
       </CardContent>
     </Card>
   );

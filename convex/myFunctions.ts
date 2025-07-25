@@ -171,16 +171,31 @@ export const recordTorrentDownload = mutation({
 		seeders: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		await ctx.db.insert("torrentDownloads", {
-			anilistId: args.anilistId,
-			animeName: args.animeName,
-			episode: args.episode,
-			torrentName: args.torrentName,
-			magnetLink: args.magnetLink,
-			downloadedAt: Date.now(),
-			resolution: args.resolution,
-			seeders: args.seeders,
-		});
+		// Check if this user has already downloaded this specific torrent
+		const existingDownload = await ctx.db
+			.query("torrentDownloads")
+			.filter((q) => 
+				q.and(
+					q.eq(q.field("anilistId"), args.anilistId),
+					q.eq(q.field("animeName"), args.animeName),
+					q.eq(q.field("magnetLink"), args.magnetLink)
+				)
+			)
+			.first();
+
+		// Only insert if no existing download found
+		if (!existingDownload) {
+			await ctx.db.insert("torrentDownloads", {
+				anilistId: args.anilistId,
+				animeName: args.animeName,
+				episode: args.episode,
+				torrentName: args.torrentName,
+				magnetLink: args.magnetLink,
+				downloadedAt: Date.now(),
+				resolution: args.resolution,
+				seeders: args.seeders,
+			});
+		}
 	},
 });
 
