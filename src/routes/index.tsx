@@ -16,7 +16,7 @@ import {
 import { AuthenticationCard } from "~/components/AuthenticationCard";
 import { GlobalChat } from "~/components/GlobalChat";
 import { AnimeLoading, FullPageLoading } from "~/components/KawaiiLoading";
-import { MediaListCard, AnilistNotificationCard } from "~/components/MediaComponents";
+import { MediaListCard, AnilistNotificationCard, TorrentDownloadsCard } from "~/components/MediaComponents";
 import { OnlineUsersCounter } from "~/components/OnlineUsersCounter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
@@ -72,6 +72,7 @@ const useNotificationsQueryOptions = (userId: number, activeTab: string) =>
     enabled: !!userId && activeTab === "notifications",
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
+
 
 // ============================================================================
 // Utility Functions
@@ -303,9 +304,13 @@ interface DayGroupProps {
   animeList: MediaListEntry[];
   isExpanded: boolean;
   onToggle: () => void;
+  currentUser?: {
+    id: number;
+    name: string;
+  };
 }
 
-function DayGroup({ day, animeList, isExpanded, onToggle }: DayGroupProps) {
+function DayGroup({ day, animeList, isExpanded, onToggle, currentUser }: DayGroupProps) {
   const dayColor = DAY_COLORS[day as keyof typeof DAY_COLORS];
 
   return (
@@ -347,7 +352,11 @@ function DayGroup({ day, animeList, isExpanded, onToggle }: DayGroupProps) {
       {isExpanded && (
         <div className="space-y-4 ml-4 animate-in slide-in-from-top-2 duration-300">
           {animeList.map((entry) => (
-            <MediaListCard key={entry.id} entry={entry} />
+            <MediaListCard 
+              key={entry.id} 
+              entry={entry} 
+              currentUser={currentUser}
+            />
           ))}
         </div>
       )}
@@ -392,6 +401,12 @@ function Home() {
     useMediaListQueryOptions(user?.id ?? 0, activeTab)
   );
 
+  // Fetch torrent downloads
+  const torrentDownloadsData = convexUseQuery(
+    api.myFunctions.getRecentTorrentDownloads,
+    activeTab === "downloads" ? { limit: 50 } : "skip"
+  );
+
   // Process media list data
   const filteredMediaList = filterAndSortMediaList(mediaListData || [], showOnlyAvailable);
   const groupedByDay = groupAnimeByDay(filteredMediaList);
@@ -418,7 +433,7 @@ function Home() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8 bg-white/80 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-3 mb-8 bg-white/80 backdrop-blur-sm">
             <TabsTrigger
               value="watching"
               className="rounded-xl data-[state=active]:!bg-gradient-to-r data-[state=active]:!from-purple-400 data-[state=active]:!to-blue-400 data-[state=active]:!text-white data-[state=active]:!shadow-md data-[state=active]:!border-transparent font-semibold transition-all duration-200 hover:bg-purple-50"
@@ -430,6 +445,12 @@ function Home() {
               className="rounded-xl data-[state=active]:!bg-gradient-to-r data-[state=active]:!from-pink-400 data-[state=active]:!to-purple-400 data-[state=active]:!text-white data-[state=active]:!shadow-md data-[state=active]:!border-transparent font-semibold transition-all duration-200 hover:bg-pink-50"
             >
               🔔 Notifications
+            </TabsTrigger>
+            <TabsTrigger
+              value="downloads"
+              className="rounded-xl data-[state=active]:!bg-gradient-to-r data-[state=active]:!from-green-400 data-[state=active]:!to-emerald-400 data-[state=active]:!text-white data-[state=active]:!shadow-md data-[state=active]:!border-transparent font-semibold transition-all duration-200 hover:bg-green-50"
+            >
+              📥 Latest Downloads
             </TabsTrigger>
           </TabsList>
 
@@ -452,6 +473,7 @@ function Home() {
                   <AnilistNotificationCard
                     key={notification.id}
                     notification={notification}
+                    currentUser={user ? { id: user.id, name: user.name } : undefined}
                   />
                 ))}
               </>
@@ -506,13 +528,18 @@ function Home() {
                                 [day]: !prev[day],
                               }))
                             }
+                            currentUser={user ? { id: user.id, name: user.name } : undefined}
                           />
                         ))}
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {filteredMediaList.map((entry) => (
-                        <MediaListCard key={entry.id} entry={entry} />
+                        <MediaListCard 
+                          key={entry.id} 
+                          entry={entry} 
+                          currentUser={user ? { id: user.id, name: user.name } : undefined}
+                        />
                       ))}
                     </div>
                   )
@@ -532,6 +559,36 @@ function Home() {
                 <p className="text-lg text-gray-600">
                   No anime in your watching list
                 </p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Downloads Tab */}
+          <TabsContent value="downloads" className="space-y-6">
+            {!torrentDownloadsData ? (
+              <AnimeLoading />
+            ) : torrentDownloadsData && torrentDownloadsData.length > 0 ? (
+              <>
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-2">
+                    📥 Latest Downloads 📥
+                  </h2>
+                  <p className="text-gray-600">
+                    Recent torrent downloads from the community ♡ ({torrentDownloadsData.length}{" "}
+                    downloads)
+                  </p>
+                </div>
+                {torrentDownloadsData.map((download) => (
+                  <TorrentDownloadsCard
+                    key={download._id}
+                    download={download}
+                  />
+                ))}
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-4xl mb-4">📁</div>
+                <p className="text-lg text-gray-600">No downloads yet</p>
               </div>
             )}
           </TabsContent>

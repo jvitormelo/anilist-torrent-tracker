@@ -19,4 +19,15 @@ export default defineSchema({
 		message: v.string(),
 		timestamp: v.number(),
 	}).index("by_timestamp", ["timestamp"]),
+	torrentDownloads: defineTable({
+		anilistId: v.number(),
+		animeName: v.string(),
+		episode: v.number(),
+		torrentName: v.string(),
+		magnetLink: v.string(),
+		downloadedAt: v.number(),
+		resolution: v.optional(v.string()),
+		seeders: v.optional(v.number()),
+	}).index("by_anilistId", ["anilistId"])
+	  .index("by_downloadedAt", ["downloadedAt"]),
 });

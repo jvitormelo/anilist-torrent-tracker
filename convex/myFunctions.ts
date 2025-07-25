@@ -158,3 +158,90 @@ export const getChatMessages = query({
 		return messagesWithUsers.reverse(); // Return in chronological order (oldest first)
 	},
 });
+
+// record torrent download
+export const recordTorrentDownload = mutation({
+	args: {
+		anilistId: v.number(),
+		animeName: v.string(),
+		episode: v.number(),
+		torrentName: v.string(),
+		magnetLink: v.string(),
+		resolution: v.optional(v.string()),
+		seeders: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		// Check if this user has already downloaded this specific torrent
+		const existingDownload = await ctx.db
+			.query("torrentDownloads")
+			.filter((q) => 
+				q.and(
+					q.eq(q.field("anilistId"), args.anilistId),
+					q.eq(q.field("animeName"), args.animeName),
+					q.eq(q.field("magnetLink"), args.magnetLink)
+				)
+			)
+			.first();
+
+		// Only insert if no existing download found
+		if (!existingDownload) {
+			await ctx.db.insert("torrentDownloads", {
+				anilistId: args.anilistId,
+				animeName: args.animeName,
+				episode: args.episode,
+				torrentName: args.torrentName,
+				magnetLink: args.magnetLink,
+				downloadedAt: Date.now(),
+				resolution: args.resolution,
+				seeders: args.seeders,
+			});
+		}
+	},
+});
+
+// get recent torrent downloads from all users
+export const getRecentTorrentDownloads = query({
+	args: {
+		limit: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const limit = args.limit || 50;
+		const downloads = await ctx.db
+			.query("torrentDownloads")
+			.withIndex("by_downloadedAt")
+			.order("desc")
+			.take(limit);
+		
+		// Get user names for each download
+		const downloadsWithUsers = await Promise.all(
+			downloads.map(async (download) => {
+				const user = await ctx.db.query("users").filter((q) => q.eq(q.field("anilistId"), download.anilistId)).first();
+				return {
+					...download,
+					userName: user?.name || "Unknown User"
+				};
+			})
+		);
+		
+		return downloadsWithUsers;
+	},
+});
+
+// get user's torrent download history
+export const getUserTorrentDownloads = query({
+	args: {
+		anilistId: v.number(),
+		limit: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const limit = args.limit || 20;
+		const downloads = await ctx.db
+			.query("torrentDownloads")
+			.withIndex("by_anilistId")
+			.filter((q) => q.eq(q.field("anilistId"), args.anilistId))
+			.order("desc")
+			.take(limit);
+		
+		return downloads;
+	},
+});
