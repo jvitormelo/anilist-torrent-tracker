@@ -1,5 +1,6 @@
 import { api } from "convex/_generated/api";
 import { useMutation as convexUseMutation } from "convex/react";
+import { useState } from "react";
 import type { MediaListEntry } from "server";
 import { toast } from "sonner";
 import { TorrentSection } from "~/components/TorrentSection";
@@ -163,7 +164,26 @@ export function MediaListCard({ entry, currentUser }: MediaListCardProps) {
 		entry.media.nextAiringEpisode ?? undefined,
 	);
 
-	console.log(entry.media.title);
+	// Calculate missing episodes range
+	const lastAiredEpisode = entry.media.nextAiringEpisode
+		? entry.media.nextAiringEpisode.episode - 1
+		: entry.media.status === "FINISHED" && entry.media.episodes
+			? entry.media.episodes
+			: nextEpisode;
+
+	const missingEpisodes: number[] = [];
+	for (let ep = nextEpisode; ep <= lastAiredEpisode; ep++) {
+		missingEpisodes.push(ep);
+	}
+
+	const [activeSearch, setActiveSearch] = useState<{
+		type: "single" | "all";
+		episode?: number;
+		episodes?: number[];
+	}>({
+		type: "single",
+		episode: nextEpisode,
+	});
 
 	return (
 		<Card className="bg-white/80 backdrop-blur-sm border-2 border-purple-200 rounded-3xl shadow-xl hover:shadow-2xl transform transition-all duration-300 overflow-hidden">
@@ -255,13 +275,68 @@ export function MediaListCard({ entry, currentUser }: MediaListCardProps) {
 					</div>
 				</div>
 
+				{/* Missing Episodes Badges */}
+				{missingEpisodes.length > 0 && (
+					<div className="mt-4 p-4 bg-gradient-to-r from-purple-50 via-pink-50 to-blue-50 rounded-2xl border-2 border-purple-100/50">
+						<div className="flex flex-wrap items-center gap-3">
+							<span className="text-sm font-bold text-purple-600 flex items-center gap-2">
+								<span>🍿</span> Missing:
+							</span>
+							<div className="flex flex-wrap gap-2">
+								{missingEpisodes.map((ep) => (
+									<button
+										key={ep}
+										type="button"
+										onClick={() =>
+											setActiveSearch({ type: "single", episode: ep })
+										}
+										className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-200 transform hover:scale-110 active:scale-95 shadow-sm border ${
+											activeSearch.type === "single" &&
+											activeSearch.episode === ep
+												? "bg-gradient-to-r from-purple-400 to-pink-400 text-white border-purple-300"
+												: "bg-white text-purple-500 border-purple-200 hover:border-purple-400"
+										}`}
+									>
+										EP {ep}
+									</button>
+								))}
+								{missingEpisodes.length > 1 && (
+									<button
+										type="button"
+										onClick={() =>
+											setActiveSearch({
+												type: "all",
+												episodes: missingEpisodes,
+											})
+										}
+										className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-md border ${
+											activeSearch.type === "all"
+												? "bg-gradient-to-r from-blue-400 to-cyan-400 text-white border-blue-300"
+												: "bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 border-blue-200 hover:border-blue-400"
+										}`}
+									>
+										🌈 Search All Missing
+									</button>
+								)}
+							</div>
+						</div>
+					</div>
+				)}
+
 				<TorrentSection
 					searchParams={{
 						romajiName: entry.media.title.romaji ?? "",
 						englishName: entry.media.title.english ?? "",
-						episode: nextEpisode,
+						episode:
+							activeSearch.type === "single" ? activeSearch.episode : undefined,
+						episodes:
+							activeSearch.type === "all" ? activeSearch.episodes : undefined,
 					}}
-					buttonText={`🔎 Find EP ${nextEpisode}`}
+					buttonText={
+						activeSearch.type === "all"
+							? "🔎 Fetch All Torrents"
+							: `🔎 Find EP ${activeSearch.episode}`
+					}
 					currentUser={currentUser}
 				/>
 			</CardContent>
