@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import { query, mutation, action } from "./_generated/server";
 import { api } from "./_generated/api";
+import { action, mutation, query } from "./_generated/server";
 
 // Write your Convex functions in any file inside this directory (`convex`).
 // See https://docs.convex.dev/functions for more.
@@ -76,89 +76,6 @@ export const myAction = action({
 	},
 });
 
-// set last active, add user if not exists
-export const setLastActive = mutation({
-	args: {
-		anilistId: v.number(),
-		name: v.string(),
-	},
-	handler: async (ctx, args) => {
-		const user = await ctx.db.query("users").filter((q) => q.eq(q.field("anilistId"), args.anilistId)).first();	
-		if (!user) {
-			await ctx.db.insert("users", { anilistId: args.anilistId, lastActive: Date.now(), name: args.name });
-		} else {
-			await ctx.db.patch(user._id, { lastActive: Date.now() });
-		}
-	},
-});
-
-// count online users (active in the last 5 minutes)
-export const countOnlineUsers = query({
-	handler: async (ctx) => {
-		const fiveMinutesAgo = Date.now() - 5 * 60 * 1000; // 5 minutes in milliseconds
-		const onlineUsers = await ctx.db
-			.query("users")
-			.filter((q) => q.gte(q.field("lastActive"), fiveMinutesAgo))
-			.collect();
-		return onlineUsers.length;
-	},
-});
-
-// send chat message
-export const sendChatMessage = mutation({
-	args: {
-		anilistId: v.number(),
-		message: v.string(),
-	},
-	handler: async (ctx, args) => {
-		// Trim and validate message
-		const trimmedMessage = args.message.trim();
-		if (!trimmedMessage || trimmedMessage.length > 500) {
-			throw new Error("Message must be between 1 and 500 characters");
-		}
-
-		// Get user from users table to ensure they exist
-		const user = await ctx.db.query("users").filter((q) => q.eq(q.field("anilistId"), args.anilistId)).first();
-		if (!user) {
-			throw new Error("User not found");
-		}
-
-		await ctx.db.insert("chatMessages", {
-			anilistId: args.anilistId,
-			message: trimmedMessage,
-			timestamp: Date.now(),
-		});
-	},
-});
-
-// get recent chat messages
-export const getChatMessages = query({
-	args: {
-		limit: v.optional(v.number()),
-	},
-	handler: async (ctx, args) => {
-		const limit = args.limit || 50;
-		const messages = await ctx.db
-			.query("chatMessages")
-			.withIndex("by_timestamp")
-			.order("desc")
-			.take(limit);
-		
-		// Get user names for each message
-		const messagesWithUsers = await Promise.all(
-			messages.map(async (message) => {
-				const user = await ctx.db.query("users").filter((q) => q.eq(q.field("anilistId"), message.anilistId)).first();
-				return {
-					...message,
-					userName: user?.name || "Unknown User"
-				};
-			})
-		);
-		
-		return messagesWithUsers.reverse(); // Return in chronological order (oldest first)
-	},
-});
-
 // record torrent download
 export const recordTorrentDownload = mutation({
 	args: {
@@ -174,12 +91,12 @@ export const recordTorrentDownload = mutation({
 		// Check if this user has already downloaded this specific torrent
 		const existingDownload = await ctx.db
 			.query("torrentDownloads")
-			.filter((q) => 
+			.filter((q) =>
 				q.and(
 					q.eq(q.field("anilistId"), args.anilistId),
 					q.eq(q.field("animeName"), args.animeName),
-					q.eq(q.field("magnetLink"), args.magnetLink)
-				)
+					q.eq(q.field("magnetLink"), args.magnetLink),
+				),
 			)
 			.first();
 
@@ -196,52 +113,5 @@ export const recordTorrentDownload = mutation({
 				seeders: args.seeders,
 			});
 		}
-	},
-});
-
-// get recent torrent downloads from all users
-export const getRecentTorrentDownloads = query({
-	args: {
-		limit: v.optional(v.number()),
-	},
-	handler: async (ctx, args) => {
-		const limit = args.limit || 50;
-		const downloads = await ctx.db
-			.query("torrentDownloads")
-			.withIndex("by_downloadedAt")
-			.order("desc")
-			.take(limit);
-		
-		// Get user names for each download
-		const downloadsWithUsers = await Promise.all(
-			downloads.map(async (download) => {
-				const user = await ctx.db.query("users").filter((q) => q.eq(q.field("anilistId"), download.anilistId)).first();
-				return {
-					...download,
-					userName: user?.name || "Unknown User"
-				};
-			})
-		);
-		
-		return downloadsWithUsers;
-	},
-});
-
-// get user's torrent download history
-export const getUserTorrentDownloads = query({
-	args: {
-		anilistId: v.number(),
-		limit: v.optional(v.number()),
-	},
-	handler: async (ctx, args) => {
-		const limit = args.limit || 20;
-		const downloads = await ctx.db
-			.query("torrentDownloads")
-			.withIndex("by_anilistId")
-			.filter((q) => q.eq(q.field("anilistId"), args.anilistId))
-			.order("desc")
-			.take(limit);
-		
-		return downloads;
 	},
 });
