@@ -290,6 +290,115 @@ interface MediaListResponse {
 	errors?: { message: string }[];
 }
 
+// ============================================================================
+// Compare Season Types & Server Function
+// ============================================================================
+
+export type AnimeSeason = "WINTER" | "SPRING" | "SUMMER" | "FALL";
+
+export interface SeasonMediaEntry {
+	score: number;
+	status: string;
+	progress: number;
+	media: {
+		id: number;
+		title: {
+			userPreferred: string;
+			english: string | null;
+			romaji: string | null;
+		};
+		coverImage: {
+			large: string;
+		};
+		season: AnimeSeason | null;
+		seasonYear: number | null;
+		genres: string[];
+		tags: { name: string; rank: number }[];
+		averageScore: number | null;
+		meanScore: number | null;
+		format: string;
+		episodes: number | null;
+		status: string;
+	};
+}
+
+interface SeasonMediaListCollection {
+	data: {
+		MediaListCollection: {
+			lists: {
+				name: string;
+				status: string;
+				entries: SeasonMediaEntry[];
+			}[];
+		} | null;
+	};
+	errors?: { message: string }[];
+}
+
+export const getSeasonAnimeList = createServerFn({ method: "GET" })
+	.validator(z.object({ userName: z.string() }))
+	.handler(async (ctx): Promise<SeasonMediaListCollection> => {
+		const { userName } = ctx.data;
+
+		const response = await fetch("https://graphql.anilist.co", {
+			method: "POST",
+			body: JSON.stringify({
+				query: `
+					query($userName: String, $type: MediaType) {
+						MediaListCollection(userName: $userName, type: $type) {
+							lists {
+								name
+								status
+								entries {
+									score
+									status
+									progress
+									media {
+										id
+										title {
+											userPreferred
+											english
+											romaji
+										}
+										coverImage {
+											large
+										}
+										season
+										seasonYear
+										genres
+										tags {
+											name
+											rank
+										}
+										averageScore
+										meanScore
+										format
+										episodes
+										status
+									}
+								}
+							}
+						}
+					}
+				`,
+				variables: {
+					userName,
+					type: "ANIME",
+				},
+			}),
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
+
+		const data: SeasonMediaListCollection = await response.json();
+		return data;
+	});
+
+// ============================================================================
+// Currently Watching
+// ============================================================================
+
 export const getCurrentlyWatching = createServerFn({ method: "GET" })
 	.validator(
 		z.object({

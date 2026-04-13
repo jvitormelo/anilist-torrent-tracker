@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import {
+  Link,
   createRootRouteWithContext,
   HeadContent,
   Outlet,
@@ -100,6 +101,38 @@ function RootComponent() {
   );
 }
 
+function NavBar() {
+  return (
+    <nav className="bg-white/60 backdrop-blur-sm border-b-2 border-purple-100 px-6 py-3">
+      <div className="max-w-6xl mx-auto flex items-center justify-between">
+        <Link
+          to="/"
+          className="text-lg font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent"
+        >
+          🌸 AniList Tracker
+        </Link>
+        <div className="flex gap-4">
+          <Link
+            to="/"
+            className="text-sm text-gray-600 hover:text-purple-600 font-medium transition-colors"
+            activeProps={{ className: "text-sm text-purple-600 font-bold transition-colors" }}
+            activeOptions={{ exact: true }}
+          >
+            📺 Watching
+          </Link>
+          <Link
+            to="/compare"
+            className="text-sm text-gray-600 hover:text-purple-600 font-medium transition-colors"
+            activeProps={{ className: "text-sm text-purple-600 font-bold transition-colors" }}
+          >
+            ⚔️ Compare
+          </Link>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -107,6 +140,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <NavBar />
         {children}
         <Toaster />
         <Scripts />
