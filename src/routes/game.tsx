@@ -1,14 +1,5 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { z } from "zod";
-import {
-	getCurrentUser,
-	getSeasonAnimeList,
-	type AnimeSeason,
-	type AnilistUser,
-	type SeasonMediaEntry,
-} from "server";
+import { createFileRoute } from "@tanstack/react-router";
+import type { AnimeSeason } from "server";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -21,178 +12,34 @@ import {
 } from "~/components/ui/select";
 import { AnimeLoading } from "~/components/KawaiiLoading";
 import { GameBoard } from "~/components/GameBoard";
-import {
-	getCurrentSeason,
-	getYearRange,
-	SEASONS,
-	filterBySeason,
-	mergeUserData,
-} from "~/lib/compare-utils";
-
-// ============================================================================
-// Route Definition
-// ============================================================================
-
-const gameSearchSchema = z.object({
-	userA: z.string().optional(),
-	userB: z.string().optional(),
-	userC: z.string().optional(),
-	season: z.enum(["WINTER", "SPRING", "SUMMER", "FALL"]).optional(),
-	year: z.coerce.number().optional(),
-});
+import { SEASONS } from "~/lib/compare-utils";
+import { SEASON_EMOJI } from "~/lib/constants";
+import { seasonSearchSchema, useSeasonComparison } from "~/hooks/useSeasonComparison";
 
 export const Route = createFileRoute("/game")({
 	component: GamePage,
-	validateSearch: gameSearchSchema,
+	validateSearch: seasonSearchSchema,
 });
-
-// ============================================================================
-// Query Options
-// ============================================================================
-
-const useUserQuery = (userName: string | undefined) =>
-	queryOptions({
-		queryKey: ["user", userName],
-		queryFn: async () => {
-			if (!userName) throw new Error("No username");
-			const response = await getCurrentUser({ data: { userName } });
-			if (response.errors?.length) {
-				throw new Error(response.errors[0].message);
-			}
-			return response.data.User;
-		},
-		enabled: !!userName,
-		retry: false,
-		staleTime: 5 * 60 * 1000,
-	});
-
-const useSeasonListQuery = (userName: string | undefined) =>
-	queryOptions({
-		queryKey: ["seasonAnimeList", userName],
-		queryFn: async () => {
-			if (!userName) throw new Error("No username");
-			const response = await getSeasonAnimeList({ data: { userName } });
-			if (response.errors?.length) {
-				throw new Error(response.errors[0].message);
-			}
-			const lists = response.data.MediaListCollection?.lists || [];
-			return lists.flatMap((list) => list.entries);
-		},
-		enabled: !!userName,
-		retry: false,
-		staleTime: 5 * 60 * 1000,
-	});
-
-// ============================================================================
-// Components
-// ============================================================================
 
 function GamePage() {
 	const search = Route.useSearch();
-	const navigate = useNavigate();
-	const currentSeason = getCurrentSeason();
-	const years = getYearRange();
-
-	const [inputA, setInputA] = useState(search.userA || "sanfordmarshall");
-	const [inputB, setInputB] = useState(search.userB || "Jediahsk");
-	const [inputC, setInputC] = useState(search.userC || "");
-	const [showThirdUser, setShowThirdUser] = useState(!!search.userC);
-	const [selectedSeason, setSelectedSeason] = useState<AnimeSeason>(
-		search.season || currentSeason.season,
-	);
-	const [selectedYear, setSelectedYear] = useState(
-		search.year || currentSeason.year,
-	);
-
-	const submittedA = search.userA;
-	const submittedB = search.userB;
-	const submittedC = search.userC;
-	const submittedSeason = search.season;
-	const submittedYear = search.year;
-
-	const userAQuery = useQuery(useUserQuery(submittedA));
-	const userBQuery = useQuery(useUserQuery(submittedB));
-	const userCQuery = useQuery(useUserQuery(submittedC));
-
-	const listAQuery = useQuery(useSeasonListQuery(submittedA));
-	const listBQuery = useQuery(useSeasonListQuery(submittedB));
-	const listCQuery = useQuery(useSeasonListQuery(submittedC));
-
-	const [errors, setErrors] = useState<Record<string, string>>({});
-
-	const handlePlay = () => {
-		const newErrors: Record<string, string> = {};
-		if (!inputA.trim()) newErrors.userA = "Username required";
-		if (!inputB.trim()) newErrors.userB = "Username required";
-		if (Object.keys(newErrors).length > 0) {
-			setErrors(newErrors);
-			return;
-		}
-		setErrors({});
-
-		navigate({
-			to: "/game",
-			search: {
-				userA: inputA.trim(),
-				userB: inputB.trim(),
-				userC: showThirdUser && inputC.trim() ? inputC.trim() : undefined,
-				season: selectedSeason,
-				year: selectedYear,
-			},
-		});
-	};
-
-	const hasSubmitted = submittedA && submittedB && submittedSeason && submittedYear;
-
-	const isLoading =
-		hasSubmitted &&
-		(listAQuery.isLoading ||
-			listBQuery.isLoading ||
-			(submittedC && listCQuery.isLoading));
-
-	const userErrors: string[] = [];
-	if (userAQuery.error) userErrors.push(`User A (${submittedA}): ${userAQuery.error.message}`);
-	if (userBQuery.error) userErrors.push(`User B (${submittedB}): ${userBQuery.error.message}`);
-	if (submittedC && userCQuery.error) userErrors.push(`User C (${submittedC}): ${userCQuery.error.message}`);
-	if (listAQuery.error) userErrors.push(`User A list (${submittedA}): ${listAQuery.error.message}`);
-	if (listBQuery.error) userErrors.push(`User B list (${submittedB}): ${listBQuery.error.message}`);
-	if (submittedC && listCQuery.error) userErrors.push(`User C list (${submittedC}): ${listCQuery.error.message}`);
-
-	let mergedEntries: Map<number, import("~/lib/compare-utils").MergedAnimeEntry> | null = null;
-	const activeUsers: { name: string; user: AnilistUser | null }[] = [];
-	const activeUserNames: string[] = [];
-
-	if (hasSubmitted && !isLoading && listAQuery.data && listBQuery.data) {
-		const usersData: { userName: string; entries: SeasonMediaEntry[] }[] = [];
-
-		if (submittedA && listAQuery.data) {
-			const filtered = filterBySeason(listAQuery.data, submittedSeason as AnimeSeason, submittedYear);
-			usersData.push({ userName: submittedA, entries: filtered });
-			activeUsers.push({ name: submittedA, user: userAQuery.data || null });
-			activeUserNames.push(submittedA);
-		}
-
-		if (submittedB && listBQuery.data) {
-			const filtered = filterBySeason(listBQuery.data, submittedSeason as AnimeSeason, submittedYear);
-			usersData.push({ userName: submittedB, entries: filtered });
-			activeUsers.push({ name: submittedB, user: userBQuery.data || null });
-			activeUserNames.push(submittedB);
-		}
-
-		if (submittedC && listCQuery.data) {
-			const filtered = filterBySeason(listCQuery.data, submittedSeason as AnimeSeason, submittedYear);
-			usersData.push({ userName: submittedC, entries: filtered });
-			activeUsers.push({ name: submittedC, user: userCQuery.data || null });
-			activeUserNames.push(submittedC);
-		}
-
-		mergedEntries = mergeUserData(usersData);
-	}
+	const {
+		inputA, setInputA,
+		inputB, setInputB,
+		inputC, setInputC,
+		showThirdUser, setShowThirdUser,
+		selectedSeason, setSelectedSeason,
+		selectedYear, setSelectedYear,
+		errors, years,
+		handleSubmit,
+		hasSubmitted, isLoading, userErrors,
+		mergedEntries, activeUsers, activeUserNames,
+		submittedSeason, submittedYear,
+	} = useSeasonComparison(search, "/game");
 
 	return (
 		<main className="min-h-screen bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 p-8">
 			<div className="max-w-6xl mx-auto">
-				{/* Header */}
 				<div className="text-center mb-8">
 					<h1 className="text-4xl font-bold bg-gradient-to-r from-yellow-500 via-amber-500 to-orange-500 bg-clip-text text-transparent mb-2">
 						🎮 Perfect 10 Game 🏆
@@ -205,7 +52,6 @@ function GamePage() {
 					</p>
 				</div>
 
-				{/* Input Form */}
 				<Card className="bg-white/90 backdrop-blur-sm border-2 border-yellow-200 rounded-3xl shadow-2xl overflow-hidden mb-8">
 					<CardContent className="p-8">
 						<div className="space-y-6">
@@ -220,7 +66,7 @@ function GamePage() {
 										value={inputA}
 										onChange={(e) => setInputA(e.target.value)}
 										className={`rounded-2xl border-2 ${errors.userA ? "border-red-300" : "border-yellow-100"} focus:border-yellow-300 h-12 text-center text-lg`}
-										onKeyDown={(e) => { if (e.key === "Enter") handlePlay(); }}
+										onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
 									/>
 									{errors.userA && <p className="text-red-400 text-xs mt-1">{errors.userA}</p>}
 								</div>
@@ -234,7 +80,7 @@ function GamePage() {
 										value={inputB}
 										onChange={(e) => setInputB(e.target.value)}
 										className={`rounded-2xl border-2 ${errors.userB ? "border-red-300" : "border-amber-100"} focus:border-amber-300 h-12 text-center text-lg`}
-										onKeyDown={(e) => { if (e.key === "Enter") handlePlay(); }}
+										onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
 									/>
 									{errors.userB && <p className="text-red-400 text-xs mt-1">{errors.userB}</p>}
 								</div>
@@ -260,7 +106,7 @@ function GamePage() {
 										value={inputC}
 										onChange={(e) => setInputC(e.target.value)}
 										className="rounded-2xl border-2 border-orange-100 focus:border-orange-300 h-12 text-center text-lg"
-										onKeyDown={(e) => { if (e.key === "Enter") handlePlay(); }}
+										onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
 									/>
 								</div>
 							) : (
@@ -282,9 +128,7 @@ function GamePage() {
 										</SelectTrigger>
 										<SelectContent>
 											{SEASONS.map((s) => (
-												<SelectItem key={s} value={s}>
-													{s === "WINTER" && "❄️ "}{s === "SPRING" && "🌸 "}{s === "SUMMER" && "☀️ "}{s === "FALL" && "🍂 "}{s}
-												</SelectItem>
+												<SelectItem key={s} value={s}>{SEASON_EMOJI[s]} {s}</SelectItem>
 											))}
 										</SelectContent>
 									</Select>
@@ -313,7 +157,7 @@ function GamePage() {
 							)}
 
 							<Button
-								onClick={handlePlay}
+								onClick={handleSubmit}
 								disabled={!inputA.trim() || !inputB.trim()}
 								className="w-full bg-gradient-to-r from-yellow-400 via-amber-400 to-orange-400 hover:from-yellow-500 hover:via-amber-500 hover:to-orange-500 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:shadow-xl transform transition-all duration-300 text-lg disabled:opacity-50"
 							>
@@ -323,7 +167,6 @@ function GamePage() {
 					</CardContent>
 				</Card>
 
-				{/* Results */}
 				{hasSubmitted && (
 					<div className="space-y-8">
 						{isLoading ? (
@@ -335,11 +178,7 @@ function GamePage() {
 										🏆 {submittedSeason} {submittedYear} Results 🏆
 									</h2>
 								</div>
-								<GameBoard
-									mergedEntries={mergedEntries}
-									users={activeUsers}
-									userNames={activeUserNames}
-								/>
+								<GameBoard mergedEntries={mergedEntries} users={activeUsers} userNames={activeUserNames} />
 							</>
 						) : null}
 					</div>

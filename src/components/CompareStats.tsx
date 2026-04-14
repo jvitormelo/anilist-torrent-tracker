@@ -21,12 +21,7 @@ import {
 	type ChartConfig,
 } from "~/components/ui/chart";
 
-const USER_COLORS = ["#f472b6", "#a78bfa", "#60a5fa"];
-const USER_GRADIENT_CLASSES = [
-	"from-pink-400 to-rose-400",
-	"from-purple-400 to-indigo-400",
-	"from-blue-400 to-cyan-400",
-];
+import { USER_HEX_COLORS, USER_GRADIENT_CLASSES } from "~/lib/constants";
 
 interface CompareStatsProps {
 	stats: CompareStatsType;
@@ -87,7 +82,7 @@ function OverviewCards({ stats, userNames }: CompareStatsProps) {
 										className="h-full rounded-full transition-all duration-500"
 										style={{
 											width: `${(avg / 10) * 100}%`,
-											backgroundColor: USER_COLORS[i],
+											backgroundColor: USER_HEX_COLORS[i],
 										}}
 									/>
 								</div>
@@ -141,7 +136,7 @@ function ScoreDistributionChart({ stats, userNames }: CompareStatsProps) {
 	for (let i = 0; i < userNames.length; i++) {
 		chartConfig[userNames[i]] = {
 			label: userNames[i],
-			color: USER_COLORS[i],
+			color: USER_HEX_COLORS[i],
 		};
 	}
 
@@ -159,7 +154,7 @@ function ScoreDistributionChart({ stats, userNames }: CompareStatsProps) {
 						<Bar
 							key={name}
 							dataKey={name}
-							fill={USER_COLORS[i]}
+							fill={USER_HEX_COLORS[i]}
 							radius={[4, 4, 0, 0]}
 						/>
 					))}
@@ -206,7 +201,7 @@ function GenreRadarChart({ stats, userNames }: CompareStatsProps) {
 	for (let i = 0; i < userNames.length; i++) {
 		chartConfig[userNames[i]] = {
 			label: userNames[i],
-			color: USER_COLORS[i],
+			color: USER_HEX_COLORS[i],
 		};
 	}
 
@@ -224,8 +219,8 @@ function GenreRadarChart({ stats, userNames }: CompareStatsProps) {
 							key={name}
 							name={name}
 							dataKey={name}
-							stroke={USER_COLORS[i]}
-							fill={USER_COLORS[i]}
+							stroke={USER_HEX_COLORS[i]}
+							fill={USER_HEX_COLORS[i]}
 							fillOpacity={0.15}
 						/>
 					))}
@@ -262,7 +257,7 @@ function TagsAndDisagreements({ stats, userNames }: CompareStatsProps) {
 												key={tag}
 												variant="outline"
 												className="text-xs"
-												style={{ borderColor: USER_COLORS[i], color: USER_COLORS[i] }}
+												style={{ borderColor: USER_HEX_COLORS[i], color: USER_HEX_COLORS[i] }}
 											>
 												{tag} ({count})
 											</Badge>
@@ -300,7 +295,7 @@ function TagsAndDisagreements({ stats, userNames }: CompareStatsProps) {
 									</p>
 									<div className="flex gap-2 mt-1">
 										{userNames.map((name, i) => (
-											<span key={name} className="text-xs" style={{ color: USER_COLORS[i] }}>
+											<span key={name} className="text-xs" style={{ color: USER_HEX_COLORS[i] }}>
 												{item.scores[name] != null ? `${name}: ${item.scores[name]}` : ""}
 											</span>
 										))}
@@ -338,7 +333,7 @@ function TagsAndDisagreements({ stats, userNames }: CompareStatsProps) {
 									</p>
 									<div className="flex gap-2 mt-1">
 										{userNames.map((name, i) => (
-											<span key={name} className="text-xs" style={{ color: USER_COLORS[i] }}>
+											<span key={name} className="text-xs" style={{ color: USER_HEX_COLORS[i] }}>
 												{item.scores[name] != null ? `${name}: ${item.scores[name]}` : ""}
 											</span>
 										))}
