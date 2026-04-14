@@ -127,6 +127,13 @@ function NavBar() {
           >
             ⚔️ Compare
           </Link>
+          <Link
+            to="/game"
+            className="text-sm text-gray-600 hover:text-purple-600 font-medium transition-colors"
+            activeProps={{ className: "text-sm text-purple-600 font-bold transition-colors" }}
+          >
+            🎮 Game
+          </Link>
         </div>
       </div>
     </nav>
