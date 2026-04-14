@@ -45,6 +45,13 @@ function getStatusBadge(status: string) {
 
 const USER_COLORS = ["from-pink-400 to-rose-400", "from-purple-400 to-indigo-400", "from-blue-400 to-cyan-400"];
 
+function getUserAvgScore(entry: MergedAnimeEntry, users: CompareTableProps["users"]): number {
+	const scores = users
+		.map((u) => entry.users[u.name]?.score || 0)
+		.filter((s) => s > 0);
+	return scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+}
+
 export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 	const [sortKey, setSortKey] = useState<SortKey>("title");
 	const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -56,6 +63,8 @@ export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 
 		if (sortKey === "title") {
 			comparison = a.media.title.userPreferred.localeCompare(b.media.title.userPreferred);
+		} else if (sortKey === "userAvg") {
+			comparison = getUserAvgScore(a, users) - getUserAvgScore(b, users);
 		} else if (sortKey === "avgScore") {
 			comparison = (a.media.averageScore || 0) - (b.media.averageScore || 0);
 		} else {
@@ -127,6 +136,12 @@ export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 						))}
 						<TableHead
 							className="cursor-pointer hover:bg-purple-100/50 transition-colors text-center min-w-[80px]"
+							onClick={() => handleSort("userAvg")}
+						>
+							User Avg{sortIcon("userAvg")}
+						</TableHead>
+						<TableHead
+							className="cursor-pointer hover:bg-purple-100/50 transition-colors text-center min-w-[80px]"
 							onClick={() => handleSort("avgScore")}
 						>
 							AL Avg{sortIcon("avgScore")}
@@ -173,11 +188,24 @@ export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 											<span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${getScoreColor(userData.score)}`}>
 												{userData.score > 0 ? userData.score : "-"}
 											</span>
+											<span className="text-[10px] text-gray-500">
+												{userData.progress}{entry.media.episodes ? `/${entry.media.episodes}` : ""} ep
+											</span>
 											{getStatusBadge(userData.status)}
 										</div>
 									</TableCell>
 								);
 							})}
+							<TableCell className="text-center">
+								{(() => {
+									const avg = getUserAvgScore(entry, users);
+									return (
+										<span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${getScoreColor(avg)}`}>
+											{avg > 0 ? avg.toFixed(1) : "-"}
+										</span>
+									);
+								})()}
+							</TableCell>
 							<TableCell className="text-center">
 								<span className="text-sm text-gray-600 font-medium">
 									{entry.media.averageScore ? `${entry.media.averageScore}%` : "-"}
