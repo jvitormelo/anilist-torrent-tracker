@@ -144,9 +144,14 @@ export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 										className="w-10 h-14 rounded-lg object-cover shadow-sm"
 									/>
 									<div className="min-w-0">
-										<p className="font-medium text-sm text-gray-800 truncate max-w-[200px]">
+										<a
+											href={`https://anilist.co/anime/${entry.media.id}`}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="font-medium text-sm text-gray-800 hover:text-purple-600 truncate max-w-[200px] block transition-colors"
+										>
 											{entry.media.title.userPreferred}
-										</p>
+										</a>
 										<p className="text-[10px] text-gray-400">
 											{entry.media.format} {entry.media.episodes ? `· ${entry.media.episodes} eps` : ""}
 										</p>
