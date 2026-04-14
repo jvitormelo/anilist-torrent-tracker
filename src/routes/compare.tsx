@@ -115,8 +115,8 @@ function ComparePage() {
 	const years = getYearRange();
 
 	// Local form state (before submitting)
-	const [inputA, setInputA] = useState(search.userA || "");
-	const [inputB, setInputB] = useState(search.userB || "");
+	const [inputA, setInputA] = useState(search.userA || "sanfordmarshall");
+	const [inputB, setInputB] = useState(search.userB || "Jediahsk");
 	const [inputC, setInputC] = useState(search.userC || "");
 	const [showThirdUser, setShowThirdUser] = useState(!!search.userC);
 	const [selectedSeason, setSelectedSeason] = useState<AnimeSeason>(
