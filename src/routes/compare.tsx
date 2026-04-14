@@ -33,11 +33,12 @@ function ComparePage() {
 		showThirdUser, setShowThirdUser,
 		selectedSeason, setSelectedSeason,
 		selectedYear, setSelectedYear,
+		selectedMode, setSelectedMode,
 		errors, years,
 		handleSubmit,
 		hasSubmitted, isLoading, userErrors,
 		mergedEntries, activeUsers, activeUserNames,
-		submittedSeason, submittedYear,
+		submittedSeason, submittedYear, submittedMode,
 	} = useSeasonComparison(search, "/compare");
 
 	const stats = useMemo(() => {
@@ -124,21 +125,48 @@ function ComparePage() {
 								</button>
 							)}
 
+							<div className="flex gap-2">
+								<button
+									type="button"
+									onClick={() => setSelectedMode("released")}
+									className={`flex-1 py-2 px-4 rounded-full text-sm font-medium transition-all cursor-pointer ${
+										selectedMode === "released"
+											? "bg-gradient-to-r from-pink-400 to-purple-400 text-white shadow-md"
+											: "bg-gray-100 text-gray-600 hover:bg-gray-200"
+									}`}
+								>
+									📺 Released in
+								</button>
+								<button
+									type="button"
+									onClick={() => setSelectedMode("watched")}
+									className={`flex-1 py-2 px-4 rounded-full text-sm font-medium transition-all cursor-pointer ${
+										selectedMode === "watched"
+											? "bg-gradient-to-r from-pink-400 to-purple-400 text-white shadow-md"
+											: "bg-gray-100 text-gray-600 hover:bg-gray-200"
+									}`}
+								>
+									👀 Watched in
+								</button>
+							</div>
+
 							<div className="flex flex-col sm:flex-row gap-4">
-								<div className="flex-1">
-									<label className="block text-sm font-medium text-gray-700 mb-2">Season</label>
-									<Select value={selectedSeason} onValueChange={(v) => setSelectedSeason(v as AnimeSeason | "ALL")}>
-										<SelectTrigger className="rounded-2xl border-2 border-purple-100 h-12">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="ALL">📅 ALL</SelectItem>
-											{SEASONS.map((s) => (
-												<SelectItem key={s} value={s}>{SEASON_EMOJI[s]} {s}</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
+								{selectedMode === "released" && (
+									<div className="flex-1">
+										<label className="block text-sm font-medium text-gray-700 mb-2">Season</label>
+										<Select value={selectedSeason} onValueChange={(v) => setSelectedSeason(v as AnimeSeason | "ALL")}>
+											<SelectTrigger className="rounded-2xl border-2 border-purple-100 h-12">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="ALL">📅 ALL</SelectItem>
+												{SEASONS.map((s) => (
+													<SelectItem key={s} value={s}>{SEASON_EMOJI[s]} {s}</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+								)}
 								<div className="flex-1">
 									<label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
 									<Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(Number(v))}>
@@ -181,7 +209,7 @@ function ComparePage() {
 							<>
 								<div className="text-center mb-4">
 									<h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent mb-2">
-										📺 {submittedSeason} {submittedYear} Comparison 📺
+										📺 {submittedMode === "watched" ? `Watched in ${submittedYear}` : `${submittedSeason} ${submittedYear}`} Comparison 📺
 									</h2>
 									<p className="text-gray-600">
 										{mergedEntries.size} anime found across {activeUserNames.length} users

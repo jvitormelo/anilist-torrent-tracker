@@ -296,10 +296,18 @@ interface MediaListResponse {
 
 export type AnimeSeason = "WINTER" | "SPRING" | "SUMMER" | "FALL";
 
+export interface FuzzyDate {
+	year: number | null;
+	month: number | null;
+	day: number | null;
+}
+
 export interface SeasonMediaEntry {
 	score: number;
 	status: string;
 	progress: number;
+	startedAt: FuzzyDate;
+	completedAt: FuzzyDate;
 	media: {
 		id: number;
 		title: {
@@ -353,6 +361,8 @@ export const getSeasonAnimeList = createServerFn({ method: "GET" })
 									score
 									status
 									progress
+									startedAt { year month day }
+									completedAt { year month day }
 									media {
 										id
 										title {

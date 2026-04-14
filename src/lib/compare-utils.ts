@@ -73,11 +73,21 @@ export function getYearRange(): number[] {
 // Data Processing
 // ============================================================================
 
+export type FilterMode = "released" | "watched";
+
 export function filterBySeason(
 	entries: SeasonMediaEntry[],
 	season: AnimeSeason | "ALL",
 	year: number,
+	mode: FilterMode = "released",
 ): SeasonMediaEntry[] {
+	if (mode === "watched") {
+		return entries.filter((e) => {
+			const startYear = e.startedAt?.year;
+			const completedYear = e.completedAt?.year;
+			return startYear === year || completedYear === year;
+		});
+	}
 	if (season === "ALL") {
 		return entries.filter((e) => e.media.seasonYear === year);
 	}

@@ -11,6 +11,7 @@ import {
 	filterBySeason,
 	mergeUserData,
 	type MergedAnimeEntry,
+	type FilterMode,
 } from "~/lib/compare-utils";
 
 export const seasonSearchSchema = z.object({
@@ -19,6 +20,7 @@ export const seasonSearchSchema = z.object({
 	userC: z.string().optional(),
 	season: z.enum(["WINTER", "SPRING", "SUMMER", "FALL", "ALL"]).optional(),
 	year: z.coerce.number().optional(),
+	mode: z.enum(["released", "watched"]).optional(),
 });
 
 export type SeasonSearch = z.infer<typeof seasonSearchSchema>;
@@ -42,6 +44,9 @@ export function useSeasonComparison(
 	const [selectedYear, setSelectedYear] = useState(
 		search.year || currentSeason.year,
 	);
+	const [selectedMode, setSelectedMode] = useState<FilterMode>(
+		search.mode || "released",
+	);
 	const [errors, setErrors] = useState<Record<string, string>>({});
 
 	const submittedA = search.userA;
@@ -49,6 +54,7 @@ export function useSeasonComparison(
 	const submittedC = search.userC;
 	const submittedSeason = search.season;
 	const submittedYear = search.year;
+	const submittedMode = (search.mode || "released") as FilterMode;
 
 	const userAQuery = useQuery(userQueryOptions(submittedA));
 	const userBQuery = useQuery(userQueryOptions(submittedB));
@@ -76,6 +82,7 @@ export function useSeasonComparison(
 				userC: showThirdUser && inputC.trim() ? inputC.trim() : undefined,
 				season: selectedSeason,
 				year: selectedYear,
+				mode: selectedMode,
 			},
 		});
 	};
@@ -105,20 +112,23 @@ export function useSeasonComparison(
 		const users: { name: string; user: AnilistUser | null }[] = [];
 		const names: string[] = [];
 
+		const season = submittedSeason as AnimeSeason | "ALL";
+		const year = submittedYear!;
+
 		if (submittedA && listAQuery.data) {
-			usersData.push({ userName: submittedA, entries: filterBySeason(listAQuery.data, submittedSeason as AnimeSeason | "ALL", submittedYear!) });
+			usersData.push({ userName: submittedA, entries: filterBySeason(listAQuery.data, season, year, submittedMode) });
 			users.push({ name: submittedA, user: userAQuery.data || null });
 			names.push(submittedA);
 		}
 
 		if (submittedB && listBQuery.data) {
-			usersData.push({ userName: submittedB, entries: filterBySeason(listBQuery.data, submittedSeason as AnimeSeason | "ALL", submittedYear!) });
+			usersData.push({ userName: submittedB, entries: filterBySeason(listBQuery.data, season, year, submittedMode) });
 			users.push({ name: submittedB, user: userBQuery.data || null });
 			names.push(submittedB);
 		}
 
 		if (submittedC && listCQuery.data) {
-			usersData.push({ userName: submittedC, entries: filterBySeason(listCQuery.data, submittedSeason as AnimeSeason | "ALL", submittedYear!) });
+			usersData.push({ userName: submittedC, entries: filterBySeason(listCQuery.data, season, year, submittedMode) });
 			users.push({ name: submittedC, user: userCQuery.data || null });
 			names.push(submittedC);
 		}
@@ -131,7 +141,7 @@ export function useSeasonComparison(
 	}, [
 		hasSubmitted, isLoading,
 		submittedA, submittedB, submittedC,
-		submittedSeason, submittedYear,
+		submittedSeason, submittedYear, submittedMode,
 		listAQuery.data, listBQuery.data, listCQuery.data,
 		userAQuery.data, userBQuery.data, userCQuery.data,
 	]);
@@ -144,6 +154,7 @@ export function useSeasonComparison(
 		showThirdUser, setShowThirdUser,
 		selectedSeason, setSelectedSeason,
 		selectedYear, setSelectedYear,
+		selectedMode, setSelectedMode,
 		errors,
 		years: YEARS,
 
@@ -159,5 +170,6 @@ export function useSeasonComparison(
 		activeUserNames,
 		submittedSeason,
 		submittedYear,
+		submittedMode,
 	};
 }
