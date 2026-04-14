@@ -63,7 +63,7 @@ export const SEASONS: AnimeSeason[] = ["WINTER", "SPRING", "SUMMER", "FALL"];
 export function getYearRange(): number[] {
 	const currentYear = new Date().getFullYear();
 	const years: number[] = [];
-	for (let y = currentYear + 1; y >= 2006; y--) {
+	for (let y = currentYear + 1; y >= 1990; y--) {
 		years.push(y);
 	}
 	return years;
