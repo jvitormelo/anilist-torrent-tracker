@@ -9,14 +9,14 @@ import {
 	TableHeader,
 	TableRow,
 } from "~/components/ui/table";
+import { useMemo } from "react";
+import { USER_GRADIENT_CLASSES } from "~/lib/constants";
 
 interface GameBoardProps {
 	mergedEntries: Map<number, MergedAnimeEntry>;
 	users: { name: string; user: AnilistUser | null }[];
 	userNames: string[];
 }
-
-const USER_COLORS = ["from-pink-400 to-rose-400", "from-purple-400 to-indigo-400", "from-blue-400 to-cyan-400"];
 
 interface GameRow {
 	entry: MergedAnimeEntry;
@@ -63,7 +63,10 @@ function computeGameRows(
 }
 
 export function GameBoard({ mergedEntries, users, userNames }: GameBoardProps) {
-	const { rows, totalScore, basePoints, bonusPoints } = computeGameRows(mergedEntries, userNames);
+	const { rows, totalScore, basePoints, bonusPoints } = useMemo(
+		() => computeGameRows(mergedEntries, userNames),
+		[mergedEntries, userNames],
+	);
 
 	if (rows.length === 0) {
 		return (
@@ -127,7 +130,7 @@ export function GameBoard({ mergedEntries, users, userNames }: GameBoardProps) {
 												className="w-6 h-6 rounded-full"
 											/>
 										)}
-										<span className={`bg-gradient-to-r ${USER_COLORS[i]} bg-clip-text text-transparent font-bold`}>
+										<span className={`bg-gradient-to-r ${USER_GRADIENT_CLASSES[i]} bg-clip-text text-transparent font-bold`}>
 											{u.name}
 										</span>
 									</div>

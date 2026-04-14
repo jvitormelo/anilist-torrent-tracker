@@ -43,7 +43,7 @@ function getStatusBadge(status: string) {
 	);
 }
 
-const USER_COLORS = ["from-pink-400 to-rose-400", "from-purple-400 to-indigo-400", "from-blue-400 to-cyan-400"];
+import { USER_GRADIENT_CLASSES } from "~/lib/constants";
 
 function getUserAvgScore(entry: MergedAnimeEntry, users: CompareTableProps["users"]): number {
 	const scores = users
@@ -81,7 +81,7 @@ export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 	const [sortDir, setSortDir] = useState<SortDir>("asc");
 	const [selectedGenres, setSelectedGenres] = useState<Set<string>>(new Set());
 
-	const entries = Array.from(mergedEntries.values());
+	const entries = useMemo(() => Array.from(mergedEntries.values()), [mergedEntries]);
 
 	// Collect all genres with counts
 	const genreCounts = useMemo(() => {
@@ -216,7 +216,7 @@ export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 												className="w-6 h-6 rounded-full"
 											/>
 										)}
-										<span className={`bg-gradient-to-r ${USER_COLORS[i]} bg-clip-text text-transparent font-bold`}>
+										<span className={`bg-gradient-to-r ${USER_GRADIENT_CLASSES[i]} bg-clip-text text-transparent font-bold`}>
 											{u.name}
 										</span>
 										<span className="text-[10px] text-gray-400">{sortIcon(u.name)}</span>
@@ -238,7 +238,9 @@ export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{sorted.map((entry) => (
+						{sorted.map((entry) => {
+							const avg = getUserAvgScore(entry, users);
+							return (
 							<TableRow key={entry.media.id} className="hover:bg-purple-50/30 transition-colors">
 								<TableCell>
 									<div className="flex items-center gap-3">
@@ -296,14 +298,9 @@ export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 									);
 								})}
 								<TableCell className="text-center">
-									{(() => {
-										const avg = getUserAvgScore(entry, users);
-										return (
-											<span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${getScoreColor(avg)}`}>
-												{avg > 0 ? avg.toFixed(1) : "-"}
-											</span>
-										);
-									})()}
+									<span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${getScoreColor(avg)}`}>
+										{avg > 0 ? avg.toFixed(1) : "-"}
+									</span>
 								</TableCell>
 								<TableCell className="text-center">
 									<span className="text-sm text-gray-600 font-medium">
@@ -311,7 +308,8 @@ export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 									</span>
 								</TableCell>
 							</TableRow>
-						))}
+							);
+						})}
 					</TableBody>
 				</Table>
 			</div>
