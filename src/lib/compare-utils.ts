@@ -75,9 +75,12 @@ export function getYearRange(): number[] {
 
 export function filterBySeason(
 	entries: SeasonMediaEntry[],
-	season: AnimeSeason,
+	season: AnimeSeason | "ALL",
 	year: number,
 ): SeasonMediaEntry[] {
+	if (season === "ALL") {
+		return entries.filter((e) => e.media.seasonYear === year);
+	}
 	return entries.filter(
 		(e) => e.media.season === season && e.media.seasonYear === year,
 	);

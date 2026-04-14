@@ -127,11 +127,12 @@ function ComparePage() {
 							<div className="flex flex-col sm:flex-row gap-4">
 								<div className="flex-1">
 									<label className="block text-sm font-medium text-gray-700 mb-2">Season</label>
-									<Select value={selectedSeason} onValueChange={(v) => setSelectedSeason(v as AnimeSeason)}>
+									<Select value={selectedSeason} onValueChange={(v) => setSelectedSeason(v as AnimeSeason | "ALL")}>
 										<SelectTrigger className="rounded-2xl border-2 border-purple-100 h-12">
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
+											<SelectItem value="ALL">📅 ALL</SelectItem>
 											{SEASONS.map((s) => (
 												<SelectItem key={s} value={s}>{SEASON_EMOJI[s]} {s}</SelectItem>
 											))}

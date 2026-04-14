@@ -17,7 +17,7 @@ export const seasonSearchSchema = z.object({
 	userA: z.string().optional(),
 	userB: z.string().optional(),
 	userC: z.string().optional(),
-	season: z.enum(["WINTER", "SPRING", "SUMMER", "FALL"]).optional(),
+	season: z.enum(["WINTER", "SPRING", "SUMMER", "FALL", "ALL"]).optional(),
 	year: z.coerce.number().optional(),
 });
 
@@ -36,7 +36,7 @@ export function useSeasonComparison(
 	const [inputB, setInputB] = useState(search.userB || "Jediahsk");
 	const [inputC, setInputC] = useState(search.userC || "");
 	const [showThirdUser, setShowThirdUser] = useState(!!search.userC);
-	const [selectedSeason, setSelectedSeason] = useState<AnimeSeason>(
+	const [selectedSeason, setSelectedSeason] = useState<AnimeSeason | "ALL">(
 		search.season || currentSeason.season,
 	);
 	const [selectedYear, setSelectedYear] = useState(
@@ -106,19 +106,19 @@ export function useSeasonComparison(
 		const names: string[] = [];
 
 		if (submittedA && listAQuery.data) {
-			usersData.push({ userName: submittedA, entries: filterBySeason(listAQuery.data, submittedSeason as AnimeSeason, submittedYear!) });
+			usersData.push({ userName: submittedA, entries: filterBySeason(listAQuery.data, submittedSeason as AnimeSeason | "ALL", submittedYear!) });
 			users.push({ name: submittedA, user: userAQuery.data || null });
 			names.push(submittedA);
 		}
 
 		if (submittedB && listBQuery.data) {
-			usersData.push({ userName: submittedB, entries: filterBySeason(listBQuery.data, submittedSeason as AnimeSeason, submittedYear!) });
+			usersData.push({ userName: submittedB, entries: filterBySeason(listBQuery.data, submittedSeason as AnimeSeason | "ALL", submittedYear!) });
 			users.push({ name: submittedB, user: userBQuery.data || null });
 			names.push(submittedB);
 		}
 
 		if (submittedC && listCQuery.data) {
-			usersData.push({ userName: submittedC, entries: filterBySeason(listCQuery.data, submittedSeason as AnimeSeason, submittedYear!) });
+			usersData.push({ userName: submittedC, entries: filterBySeason(listCQuery.data, submittedSeason as AnimeSeason | "ALL", submittedYear!) });
 			users.push({ name: submittedC, user: userCQuery.data || null });
 			names.push(submittedC);
 		}
