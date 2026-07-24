@@ -26,24 +26,16 @@ function getScoreColor(score: number): string {
 	return "bg-gray-50 text-gray-400";
 }
 
+import { USER_GRADIENT_CLASSES, STATUS_ORDER, getStatusMeta } from "~/lib/constants";
+
 function getStatusBadge(status: string) {
-	const config: Record<string, { label: string; className: string }> = {
-		CURRENT: { label: "Watching", className: "bg-blue-100 text-blue-700 border-blue-200" },
-		COMPLETED: { label: "Completed", className: "bg-green-100 text-green-700 border-green-200" },
-		PLANNING: { label: "Planning", className: "bg-purple-100 text-purple-700 border-purple-200" },
-		DROPPED: { label: "Dropped", className: "bg-red-100 text-red-700 border-red-200" },
-		PAUSED: { label: "Paused", className: "bg-yellow-100 text-yellow-700 border-yellow-200" },
-		REPEATING: { label: "Rewatching", className: "bg-cyan-100 text-cyan-700 border-cyan-200" },
-	};
-	const c = config[status] || { label: status, className: "bg-gray-100 text-gray-700 border-gray-200" };
+	const c = getStatusMeta(status);
 	return (
 		<Badge variant="outline" className={`text-[10px] ${c.className}`}>
 			{c.label}
 		</Badge>
 	);
 }
-
-import { USER_GRADIENT_CLASSES } from "~/lib/constants";
 
 function getUserAvgScore(entry: MergedAnimeEntry, users: CompareTableProps["users"]): number {
 	const scores = users
@@ -80,6 +72,7 @@ export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 	const [sortKey, setSortKey] = useState<SortKey>("title");
 	const [sortDir, setSortDir] = useState<SortDir>("asc");
 	const [selectedGenres, setSelectedGenres] = useState<Set<string>>(new Set());
+	const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set());
 
 	const entries = useMemo(() => Array.from(mergedEntries.values()), [mergedEntries]);
 
@@ -94,6 +87,24 @@ export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 		return Object.entries(counts).sort((a, b) => b[1] - a[1]);
 	}, [entries]);
 
+	// Collect all statuses (across all users) with counts
+	const statusCounts = useMemo(() => {
+		const counts: Record<string, number> = {};
+		for (const entry of entries) {
+			const seen = new Set<string>();
+			for (const u of users) {
+				const status = entry.users[u.name]?.status;
+				if (status && !seen.has(status)) {
+					seen.add(status);
+					counts[status] = (counts[status] || 0) + 1;
+				}
+			}
+		}
+		return STATUS_ORDER.filter((s) => counts[s]).map(
+			(s) => [s, counts[s]] as [string, number],
+		);
+	}, [entries, users]);
+
 	const toggleGenre = (genre: string) => {
 		setSelectedGenres((prev) => {
 			const next = new Set(prev);
@@ -106,12 +117,31 @@ export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 		});
 	};
 
-	// Filter by selected genres
-	const filtered = selectedGenres.size > 0
-		? entries.filter((entry) =>
-				Array.from(selectedGenres).every((g) => entry.media.genres.includes(g)),
-			)
-		: entries;
+	const toggleStatus = (status: string) => {
+		setSelectedStatuses((prev) => {
+			const next = new Set(prev);
+			if (next.has(status)) {
+				next.delete(status);
+			} else {
+				next.add(status);
+			}
+			return next;
+		});
+	};
+
+	// Filter by selected genres (AND) and statuses (OR — any user matches)
+	const filtered = entries.filter((entry) => {
+		const genreOk =
+			selectedGenres.size === 0 ||
+			Array.from(selectedGenres).every((g) => entry.media.genres.includes(g));
+		const statusOk =
+			selectedStatuses.size === 0 ||
+			users.some((u) => {
+				const status = entry.users[u.name]?.status;
+				return status != null && selectedStatuses.has(status);
+			});
+		return genreOk && statusOk;
+	});
 
 	const sorted = [...filtered].sort((a, b) => {
 		let comparison = 0;
@@ -189,6 +219,43 @@ export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 						</button>
 					))}
 				</div>
+
+				{statusCounts.length > 0 && (
+					<>
+						<div className="flex items-center justify-between mt-4 mb-3">
+							<span className="text-sm font-medium text-gray-700">Filter by Status</span>
+							{selectedStatuses.size > 0 && (
+								<button
+									type="button"
+									onClick={() => setSelectedStatuses(new Set())}
+									className="text-xs text-purple-400 hover:text-purple-600 cursor-pointer"
+								>
+									Clear filters ({filtered.length}/{entries.length})
+								</button>
+							)}
+						</div>
+						<div className="flex flex-wrap gap-1.5">
+							{statusCounts.map(([status, count]) => {
+								const meta = getStatusMeta(status);
+								return (
+									<button
+										key={status}
+										type="button"
+										onClick={() => toggleStatus(status)}
+										className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+											selectedStatuses.has(status)
+												? "ring-2 ring-purple-400 ring-offset-1 scale-105"
+												: "opacity-80 hover:opacity-100"
+										} ${meta.className}`}
+									>
+										{meta.label}
+										<span className="opacity-60">({count})</span>
+									</button>
+								);
+							})}
+						</div>
+					</>
+				)}
 			</div>
 
 			{/* Table */}

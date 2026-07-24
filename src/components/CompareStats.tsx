@@ -21,7 +21,12 @@ import {
 	type ChartConfig,
 } from "~/components/ui/chart";
 
-import { USER_HEX_COLORS, USER_GRADIENT_CLASSES } from "~/lib/constants";
+import {
+	USER_HEX_COLORS,
+	USER_GRADIENT_CLASSES,
+	STATUS_ORDER,
+	getStatusMeta,
+} from "~/lib/constants";
 
 interface CompareStatsProps {
 	stats: CompareStatsType;
@@ -89,6 +94,42 @@ function OverviewCards({ stats, userNames }: CompareStatsProps) {
 								<span className="font-bold text-gray-700 min-w-[40px] text-right">
 									{avg > 0 ? avg.toFixed(1) : "N/A"}
 								</span>
+							</div>
+						);
+					})}
+				</div>
+			</div>
+
+			{/* Status breakdown */}
+			<div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 border-2 border-purple-100">
+				<h3 className="text-lg font-bold text-gray-800 mb-4">Status Breakdown</h3>
+				<div className="space-y-4">
+					{userNames.map((name, i) => {
+						const counts = stats.statusCounts[name] || {};
+						const statuses = STATUS_ORDER.filter((s) => counts[s]);
+						return (
+							<div key={name}>
+								<div className={`bg-gradient-to-r ${USER_GRADIENT_CLASSES[i]} bg-clip-text text-transparent font-bold mb-2`}>
+									{name}
+								</div>
+								<div className="flex flex-wrap gap-1.5">
+									{statuses.length > 0 ? (
+										statuses.map((status) => {
+											const meta = getStatusMeta(status);
+											return (
+												<span
+													key={status}
+													className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${meta.className}`}
+												>
+													{meta.label}
+													<span className="font-bold">{counts[status]}</span>
+												</span>
+											);
+										})
+									) : (
+										<span className="text-sm text-gray-400">No status data</span>
+									)}
+								</div>
 							</div>
 						);
 					})}

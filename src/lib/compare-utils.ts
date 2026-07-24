@@ -20,6 +20,7 @@ export interface CompareStats {
 	animeCount: Record<string, number>;
 	sharedCount: number;
 	uniqueCounts: Record<string, number>;
+	statusCounts: Record<string, Record<string, number>>;
 	scoreDistribution: Record<string, number[]>;
 	genreDistribution: Record<string, Record<string, number>>;
 	tagDistribution: Record<string, Record<string, number>>;
@@ -136,6 +137,7 @@ export function computeStats(
 	const scoreDistribution: Record<string, number[]> = {};
 	const genreDistribution: Record<string, Record<string, number>> = {};
 	const tagDistribution: Record<string, Record<string, number>> = {};
+	const statusCounts: Record<string, Record<string, number>> = {};
 
 	// Initialize per-user accumulators
 	for (const name of userNames) {
@@ -145,6 +147,7 @@ export function computeStats(
 		scoreDistribution[name] = new Array(11).fill(0);
 		genreDistribution[name] = {};
 		tagDistribution[name] = {};
+		statusCounts[name] = {};
 	}
 
 	let sharedCount = 0;
@@ -177,6 +180,12 @@ export function computeStats(
 		for (const userName of presentUsers) {
 			const userData = entry.users[userName]!;
 			animeCount[userName]++;
+
+			// Status counts
+			if (userData.status) {
+				statusCounts[userName][userData.status] =
+					(statusCounts[userName][userData.status] || 0) + 1;
+			}
 
 			// Score stats
 			if (userData.score > 0) {
@@ -246,6 +255,7 @@ export function computeStats(
 		animeCount,
 		sharedCount,
 		uniqueCounts,
+		statusCounts,
 		scoreDistribution,
 		genreDistribution,
 		tagDistribution,
