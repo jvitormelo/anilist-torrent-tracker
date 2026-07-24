@@ -21,6 +21,8 @@ export const seasonSearchSchema = z.object({
 	season: z.enum(["WINTER", "SPRING", "SUMMER", "FALL", "ALL"]).optional(),
 	year: z.coerce.number().optional(),
 	mode: z.enum(["released", "watched"]).optional(),
+	genres: z.array(z.string()).optional(),
+	statuses: z.array(z.string()).optional(),
 });
 
 export type SeasonSearch = z.infer<typeof seasonSearchSchema>;

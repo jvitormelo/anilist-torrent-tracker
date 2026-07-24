@@ -10,6 +10,7 @@ import {
 	TableRow,
 } from "~/components/ui/table";
 import { useMemo, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
 interface CompareTableProps {
 	mergedEntries: Map<number, MergedAnimeEntry>;
@@ -71,8 +72,32 @@ function getGenreColor(genre: string): string {
 export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 	const [sortKey, setSortKey] = useState<SortKey>("title");
 	const [sortDir, setSortDir] = useState<SortDir>("asc");
-	const [selectedGenres, setSelectedGenres] = useState<Set<string>>(new Set());
-	const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set());
+
+	const navigate = useNavigate();
+	const search = useSearch({ strict: false }) as {
+		genres?: string[];
+		statuses?: string[];
+	};
+	const selectedGenres = useMemo(() => new Set(search.genres ?? []), [search.genres]);
+	const selectedStatuses = useMemo(() => new Set(search.statuses ?? []), [search.statuses]);
+
+	const setSelectedGenres = (next: Set<string>) => {
+		const arr = Array.from(next);
+		navigate({
+			to: ".",
+			search: (prev) => ({ ...prev, genres: arr.length ? arr : undefined }),
+			replace: true,
+		});
+	};
+
+	const setSelectedStatuses = (next: Set<string>) => {
+		const arr = Array.from(next);
+		navigate({
+			to: ".",
+			search: (prev) => ({ ...prev, statuses: arr.length ? arr : undefined }),
+			replace: true,
+		});
+	};
 
 	const entries = useMemo(() => Array.from(mergedEntries.values()), [mergedEntries]);
 
@@ -106,27 +131,23 @@ export function CompareTable({ mergedEntries, users }: CompareTableProps) {
 	}, [entries, users]);
 
 	const toggleGenre = (genre: string) => {
-		setSelectedGenres((prev) => {
-			const next = new Set(prev);
-			if (next.has(genre)) {
-				next.delete(genre);
-			} else {
-				next.add(genre);
-			}
-			return next;
-		});
+		const next = new Set(selectedGenres);
+		if (next.has(genre)) {
+			next.delete(genre);
+		} else {
+			next.add(genre);
+		}
+		setSelectedGenres(next);
 	};
 
 	const toggleStatus = (status: string) => {
-		setSelectedStatuses((prev) => {
-			const next = new Set(prev);
-			if (next.has(status)) {
-				next.delete(status);
-			} else {
-				next.add(status);
-			}
-			return next;
-		});
+		const next = new Set(selectedStatuses);
+		if (next.has(status)) {
+			next.delete(status);
+		} else {
+			next.add(status);
+		}
+		setSelectedStatuses(next);
 	};
 
 	// Filter by selected genres (AND) and statuses (OR — any user matches)
