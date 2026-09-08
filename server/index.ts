@@ -1,6 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
-import * as cheerio from "cheerio";
 import { z } from "zod";
+import {
+	buildSearchQueries,
+	parseTorrentRows,
+	sortBySeeders,
+	type TorrentResult,
+} from "./nyaa";
+
+export type { TorrentResult } from "./nyaa";
 
 export interface AiringNotification {
 	animeId: number;
@@ -23,97 +30,8 @@ export interface AiringNotification {
 	id: number;
 }
 
-function extractEpisodeNumber(name: string): number | undefined {
-	// Various episode patterns to match - ordered from most specific to least specific
-	// IMPORTANT: Order matters! More specific patterns should come first to avoid
-	// false matches (e.g., "Season 2" matching before "- 03")
-	const patterns = [
-		/S\d+E(\d+)/i, // S01E01, S1E1
-		/\s-\s(\d+)(?:\s|$|\[)/i, // - 03 (followed by space, end, or bracket)
-		/EP(\d+)/i, // EP03, ep3
-		/episode\s*(\d+)/i, // episode 03, Episode 3
-		/\bE(\d+)\b/i, // E01, e1 (standalone)
-		/\[(\d+)\]/, // [01], [1] - for bracketed episodes
-	];
-
-	for (const pattern of patterns) {
-		const match = name.match(pattern);
-		if (match) {
-			const episodeNum = parseInt(match[1], 10);
-			if (episodeNum > 0 && episodeNum < 1000) {
-				// reasonable episode range
-				return episodeNum;
-			}
-		}
-	}
-
-	return undefined;
-}
-
-function extractSeason(name: string): number | undefined {
-	// Season patterns to match
-	const patterns = [
-		/S(\d+)/i, // S1, S2, S01, S02
-		/Season\s*(\d+)/i, // Season 1, Season 2
-	];
-
-	for (const pattern of patterns) {
-		const match = name.match(pattern);
-		if (match) {
-			return parseInt(match[1], 10);
-		}
-	}
-
-	return undefined;
-}
-
-function extractResolution(name: string): string | undefined {
-	// Common resolution patterns
-	const patterns = [
-		/(\d{3,4}p)/i, // 1080p, 720p, 480p, 2160p
-		/(\d{3,4}x\d{3,4})/i, // 1920x1080, 1280x720
-		/(4K)/i, // 4K
-		/(8K)/i, // 8K
-		/(HD)/i, // HD
-		/(FHD)/i, // FHD (Full HD)
-		/(UHD)/i, // UHD (Ultra HD)
-	];
-
-	for (const pattern of patterns) {
-		const match = name.match(pattern);
-		if (match) {
-			return match[1].toLowerCase();
-		}
-	}
-
-	return undefined;
-}
-
-function parseNyaaDate(dateString: string): Date | null {
-	try {
-		// Nyaa dates are typically in format "2025-07-06 14:49"
-		const date = new Date(dateString);
-		return Number.isNaN(date.getTime()) ? null : date;
-	} catch {
-		return null;
-	}
-}
-
-function isWithinThreeMonths(date: Date): boolean {
-	const threeMonthsAgo = new Date();
-	threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-	return date >= threeMonthsAgo;
-}
-
-export interface TorrentResult {
-	name: string;
-	date: Date;
-	seeders: string;
-	magnetLink: string;
-	episode?: number;
-	resolution?: string;
-	season?: number;
-}
+const MAX_TORRENT_RESULTS = 15;
+const FOUND_SHOW_ROW_COUNT = 5;
 
 export const scrapNyaa = createServerFn({ method: "GET" })
 	.validator(
@@ -123,84 +41,48 @@ export const scrapNyaa = createServerFn({ method: "GET" })
 			episode: z.number().optional(),
 		}),
 	)
-	.handler(async (ctx) => {
+	.handler(async (ctx): Promise<TorrentResult[]> => {
 		const { romajiName, englishName, episode } = ctx.data;
 
-		const sanitizedRomajiName = romajiName.replace(/\s+(Season|S)\s*\d+/gi, "");
-
-		const query = `${sanitizedRomajiName}`;
-
-		// Build URL with parameters
-		const params = new URLSearchParams({
-			f: "0",
-			c: "1_2",
-			q: query,
-			s: "seeders",
-			o: "desc",
-		});
-
-		const url = `https://nyaa.si/?${params.toString()}`;
-
-		console.log({ url, episode });
-		try {
-			const response = await fetch(url);
-
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
-
-			const html = await response.text();
-
-			const $ = cheerio.load(html);
-
-			const results: TorrentResult[] = [];
-
-			// Parse torrent table rows
-			$(".torrent-list tbody tr").each((_index, element) => {
-				const $row = $(element);
-
-				// Find all cells (td) in the current row
-				const cells = $row.find("td");
-
-				// Extract data from each cell based on its position
-				const name = $(cells).eq(1).find("a").not(".comments").attr("title");
-				const torrentLink = $(cells).eq(2).find("a").eq(1).attr("href");
-
-				const dateString = $(cells).eq(4).text().trim();
-				const seeders = $(cells).eq(5).text().trim();
-
-				// Parse the date string to Date object
-				const parsedDate = parseNyaaDate(dateString);
-
-				// Skip if date parsing failed or if the torrent is older than 3 months
-				if (!parsedDate || !isWithinThreeMonths(parsedDate)) {
-					return;
-				}
-
-				// Extract episode number, season, and resolution from the name
-				const animeEpisode = name ? extractEpisodeNumber(name) : undefined;
-				const season = name ? extractSeason(name) : undefined;
-				const resolution = name ? extractResolution(name) : undefined;
-
-				// Push the extracted data as an object into our array
-				results.push({
-					name: name ?? "",
-					date: parsedDate,
-					seeders,
-					magnetLink: torrentLink ?? "",
-					episode: animeEpisode,
-					season,
-					resolution,
-				});
+		// Try the most specific title first and fall back to broader ones, since
+		// release groups rarely spell season suffixes the way AniList does.
+		for (const query of buildSearchQueries(romajiName, englishName)) {
+			const params = new URLSearchParams({
+				f: "0",
+				c: "1_2",
+				q: query,
+				s: "seeders",
+				o: "desc",
 			});
 
-			console.log({ results });
+			const url = `https://nyaa.si/?${params.toString()}`;
 
-			return results.filter((result) => result.episode === episode).slice(0, 5);
-		} catch (error) {
-			console.error("Error scraping Nyaa:", error);
-			return [];
+			try {
+				const response = await fetch(url);
+
+				if (!response.ok) {
+					throw new Error(`HTTP error! status: ${response.status}`);
+				}
+
+				const rows = parseTorrentRows(await response.text());
+				const matches = rows.filter((result) => result.episode === episode);
+
+				if (matches.length > 0) {
+					return sortBySeeders(matches).slice(0, MAX_TORRENT_RESULTS);
+				}
+
+				// Plenty of rows but none for this episode means the query already
+				// found the right show and the episode simply is not out yet, so a
+				// broader query would only burn another request.
+				if (rows.length >= FOUND_SHOW_ROW_COUNT) {
+					return [];
+				}
+			} catch (error) {
+				console.error(`Error scraping Nyaa for "${query}":`, error);
+			}
 		}
+
+		return [];
 	});
 
 export interface AnilistUser {

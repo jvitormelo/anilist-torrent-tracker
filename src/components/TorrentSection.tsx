@@ -177,6 +177,16 @@ export function TorrentSection({
 				)}
 			</div>
 
+			{getLinkMutation.isSuccess && totalTorrents === 0 && (
+				<div className="mt-4 rounded-2xl border-2 border-pink-100 bg-gradient-to-r from-pink-50 to-purple-50 px-4 py-3 text-sm text-gray-600">
+					😿 No torrents found for{" "}
+					{episodesFound.length === 1
+						? `episode ${episodesFound[0]}`
+						: "these episodes"}
+					. It may not have aired yet.
+				</div>
+			)}
+
 			{/* Toggleable Torrent Results */}
 			{showTorrents && totalTorrents > 0 && (
 				<>
